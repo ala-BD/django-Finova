@@ -1,0 +1,78 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Finova{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <a class="skip-link" href="#contenu">Aller au contenu</a>
+
+    <header>
+        {% block header %}
+            <p class="brand"><a href="{% url 'home' %}">Finova</a></p>
+            {% block nav %}
+                <nav aria-label="Navigation principale">
+                    <ul>
+                        <li>
+                            <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Accueil</a>
+                        </li>
+                        {% if user.is_authenticated %}
+                            <li>
+                                <a href="{% url 'groups:list' %}">Groupes</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'automation:notifications' %}">
+                                    Notifications
+                                    {% if unread_notifications %}
+                                        <span class="badge" aria-live="polite">
+                                            {{ unread_notifications }}
+                                            <span class="visually-hidden">non lues</span>
+                                        </span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                            <li class="nav-user">
+                                <span class="visually-hidden">Connecté en tant que</span>
+                                {{ user.get_short_name|default:user.username }}
+                            </li>
+                            <li>
+                                <form class="nav-logout" action="{% url 'accounts:logout' %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit">Déconnexion</button>
+                                </form>
+                            </li>
+                        {% else %}
+                            <li>
+                                <a href="{% url 'accounts:login' %}" {% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'login' %}aria-current="page"{% endif %}>Connexion</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'accounts:register' %}" {% if request.resolver_match.url_name == 'register' %}aria-current="page"{% endif %}>Inscription</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endblock %}
+        {% endblock %}
+    </header>
+
+    <main id="contenu" tabindex="-1">
+        {% block messages %}
+            {% include "includes/messages.html" %}
+        {% endblock %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        {% block footer %}
+            <p>Finova — gestion et partage de dépenses</p>
+        {% endblock %}
+    </footer>
+
+    <script src="{% static 'js/app.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
