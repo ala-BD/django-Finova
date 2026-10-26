@@ -18,6 +18,36 @@ class UserModelTests(TestCase):
         self.assertEqual(user.preferred_currency, "TND")
         self.assertTrue(user.check_password("un-mot-de-passe-fort"))
 
+    def test_password_is_hashed_never_stored_in_clear(self):
+        user = get_user_model().objects.create_user(username="linda", password="un-mot-de-passe-fort")
+        self.assertNotIn("un-mot-de-passe-fort", user.password)
+        self.assertTrue(user.password.startswith("pbkdf2_sha256$"))
+
+    def test_profile_defaults_and_monthly_income(self):
+        from decimal import Decimal
+
+        user = get_user_model().objects.create_user(
+            username="linda", password="un-mot-de-passe-fort", monthly_income=Decimal("1800.500")
+        )
+        self.assertEqual(user.income_profile, "active")
+        self.assertEqual(user.monthly_income, Decimal("1800.500"))
+        self.assertEqual(str(user), "linda")
+
+    def test_get_groups_returns_active_memberships_of_unarchived_groups(self):
+        from groups.models import Group, Membership
+
+        User = get_user_model()
+        linda = User.objects.create_user(username="linda", password="un-mot-de-passe-fort")
+        owner = User.objects.create_user(username="ala", password="un-mot-de-passe-fort")
+        active = Group.objects.create(name="Coloc", created_by=owner)
+        archived = Group.objects.create(name="Ancien voyage", created_by=owner, is_archived=True)
+        left = Group.objects.create(name="Club quitté", created_by=owner)
+        Group.objects.create(name="Pas membre", created_by=owner)
+        Membership.objects.create(user=linda, group=active)
+        Membership.objects.create(user=linda, group=archived)
+        Membership.objects.create(user=linda, group=left, is_active=False)
+        self.assertEqual(list(linda.get_groups()), [active])
+
 
 class LoginLogoutTests(TestCase):
     def setUp(self):
