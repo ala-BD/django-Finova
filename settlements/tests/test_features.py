@@ -86,6 +86,20 @@ class NaturalLanguageLLMTests(TestCase):
         self.assertIn('"Paiement mobile"', call_llm.call_args.args[1])  # liste fermée envoyée au LLM
 
     @patch("settlements.nlp.call_llm",
+           return_value='{"receiver_id": 3, "amount": 47300, "payment_mode": "Espèces", "purpose": ""}')
+    def test_millimes_amount_with_currency_read_by_rules(self, _):
+        # Erreur réelle de Gemini : « 47.300 dinars » lu 47 300 au lieu de 47,3 (millimes)
+        result = nlp.parse_repayment("Linda 47.300 dinars cash", MEMBERS)
+        self.assertEqual((result["amount"], result["source"]), (D("47.300"), "llm+regles"))
+
+    @patch("settlements.nlp.call_llm",
+           return_value='{"receiver_id": 1, "amount": 30, "payment_mode": "", "purpose": ""}')
+    def test_amount_without_currency_trusts_llm(self, _):
+        # Sans devise, les règles prendraient le premier nombre (« 2 amis ») : le LLM l'emporte
+        result = nlp.parse_repayment("avec 2 amis on a rendu 30 à Ala", MEMBERS)
+        self.assertEqual(result["amount"], D("30.000"))
+
+    @patch("settlements.nlp.call_llm",
            return_value='{"receiver_id": 1, "amount": 30, "payment_mode": "cash", "purpose": ""}')
     def test_payment_mode_outside_closed_list_is_ignored(self, _):
         # « cash » n'est pas un libellé autorisé : le LLM ne fixe pas de note, les règles la complètent

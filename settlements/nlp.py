@@ -151,6 +151,10 @@ def parse_repayment(text: str, members, user=None, use_llm=True) -> dict:
         try:
             llm = parse_with_llm(text, members, user=user)
             merged = {key: llm[key] if llm[key] not in (None, "") else rules[key] for key in rules}
+            # Convention tunisienne : « 47.300 DT » = 47,3 dinars (millimes), que le LLM lit parfois
+            # 47 300. Un montant écrit à côté d'une devise est donc lu par les règles, sans ambiguïté.
+            if rules["amount"] is not None and AMOUNT_WITH_CURRENCY.search(normalize(text)):
+                merged["amount"] = rules["amount"]
             source = "llm" if merged == llm else "llm+regles"
             result = merged
         except (LLMError, ValueError, json.JSONDecodeError):
