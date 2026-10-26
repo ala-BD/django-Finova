@@ -13,6 +13,10 @@ ALLOWED_HOSTS = [
     for host in os.environ.get("ALLOWED_HOSTS", "").split(",")
     if host.strip()
 ]
+# Render fournit automatiquement le nom d'hôte du service (finova-xxxx.onrender.com)
+if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
+CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS if not host.startswith(".")]
 
 DATABASES = {
     "default": dj_database_url.config(
@@ -23,8 +27,11 @@ DATABASES = {
 }
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "true").lower() == "true"
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+# HSTS : 1 h par défaut (prudent) ; augmenter via SECURE_HSTS_SECONDS une fois le site validé
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "3600"))
 
 STORAGES = {
     "default": {
