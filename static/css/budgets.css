@@ -630,3 +630,40 @@ input[type="color"].input {
     margin: 0 0 1.5rem;
 }
 
+
+/* Plan d'économie */
+.plan-section {
+    margin-top: 2rem;
+}
+
+.plan-section .data-table tfoot th,
+.plan-section .data-table tfoot td {
+    border-top: 2px solid var(--border);
+    border-bottom: 0;
+}
+
+.tag-fixe {
+    background: var(--track);
+}
+
+.tag-peu-flexible {
+    background: var(--warning-bg);
+    color: var(--warning);
+}
+
+.tag-flexible {
+    background: var(--ok-bg);
+    color: var(--ok);
+}
+
+.plan-apply {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 1.25rem;
+}
+
+.plan-apply .help {
+    margin: 0;
+}

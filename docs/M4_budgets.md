@@ -64,6 +64,8 @@ Se connecter en `linda` (admin) ou `yahya` (membre simple) pour montrer les deux
 | Catégories (liste) | `/groups/<gid>/categories/` | ✓ | ✓ |
 | Créer / modifier / supprimer une catégorie | `…/categories/new/`, `…/<id>/edit/`, `…/<id>/delete/` | 403 | ✓ |
 | Simulateur (HTML ou JSON) | `/groups/<gid>/budgets/simulate/` | ✓ | ✓ |
+| Plan d'économie | `/groups/<gid>/budgets/plan/?goal=300&months=3` | ✓ | ✓ |
+| Appliquer le plan au mois suivant | `/groups/<gid>/budgets/plan/apply/` (POST) | 403 | ✓ |
 | Recommandation IA (JSON) | `/groups/<gid>/budgets/recommend/?category=<id>` | ✓ | ✓ |
 
 Visiteur → redirection vers la connexion avec `?next=`. Non-membre → **403** sur toutes ces URLs.
@@ -88,6 +90,23 @@ Budget d'un autre groupe → **404**. Suppressions en POST avec jeton CSRF uniqu
   300 TND/mois, −20 % → 60 TND/mois, objectif 360 TND → **6 mois** (test automatisé).
   Lecture seule, donc en GET ; avec JavaScript, appel `fetch` et réponse JSON sans rechargement ;
   sans JavaScript, le même formulaire affiche le résultat côté serveur.
+
+### Plan d'économie (onglet « Plan d'économie »)
+
+L'utilisateur fixe un objectif (« économiser 300 TND en 3 mois ») ; Finova répartit l'effort mensuel
+(100 TND) entre les catégories (`budgets/planning.py`, fonction pure) :
+
+1. pour chaque catégorie, moyenne et **coefficient de variation** (écart-type / moyenne) sur 6 mois ;
+2. variation < 5 % → dépense **fixe** (loyer, abonnement) : jamais réduite ;
+3. plafond par catégorie = 2 × variation, **au plus 30 %** : on ne demande pas de couper plus que ce
+   que la catégorie varie déjà naturellement ;
+4. effort réparti au prorata de « moyenne × variation » ; une catégorie qui atteint son plafond
+   repasse le reste aux autres (remplissage successif) ; arrondi par la méthode du plus grand reste
+   pour que la somme tombe juste ;
+5. objectif irréaliste → Finova affiche le maximum raisonnable par mois et le **délai nécessaire**.
+
+Un admin peut **appliquer le plan** au mois suivant : un budget par catégorie, créé ou mis à jour avec
+la nouvelle cible (POST protégé par CSRF, 403 pour un membre simple).
 
 ### Contrat exposé
 
@@ -242,8 +261,10 @@ animation désactivée si `prefers-reduced-motion`, mise en page fluide jusqu'au
    ajouter dans l'admin (`/admin/expenses/expense/add/`) une dépense qui fait passer un budget
    au-dessus de 100 % → rafraîchir la page des budgets.
 5. **Simulateur** : Restaurants, 20 %, 360 TND → résultat sans rechargement.
-6. **Télécharger le rapport PDF** et l'ouvrir.
-7. Se reconnecter en `yahya` : boutons de gestion absents, `/budgets/new/` → 403.
+6. **Plan d'économie** : 300 TND en 3 mois → répartition, le loyer n'est pas touché ;
+   « Appliquer ce plan » → les budgets du mois suivant sont créés.
+7. **Télécharger le rapport PDF** et l'ouvrir.
+8. Se reconnecter en `yahya` : boutons de gestion absents, `/budgets/new/` → 403.
 
 ## 8. Questions probables à l'oral
 

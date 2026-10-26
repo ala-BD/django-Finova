@@ -15,6 +15,8 @@ urlpatterns = [
     path(f"{group_prefix}budgets/<int:pk>/delete/", views.BudgetDeleteView.as_view(), name="delete"),
     path(f"{group_prefix}budgets/simulate/", views.SimulateView.as_view(), name="simulate"),
     path(f"{group_prefix}budgets/recommend/", views.RecommendView.as_view(), name="recommend"),
+    path(f"{group_prefix}budgets/plan/", views.SavingsPlanView.as_view(), name="plan"),
+    path(f"{group_prefix}budgets/plan/apply/", views.ApplySavingsPlanView.as_view(), name="plan_apply"),
     # API JSON de l'IA
     path(f"{group_prefix}budgets/report.pdf", views.BudgetReportPdfView.as_view(), name="report_pdf"),
     path(f"{group_prefix}budgets/<int:pk>/insight/", views.BudgetInsightApiView.as_view(), name="insight_api"),

@@ -15,7 +15,7 @@ from expenses.services import get_group_expenses
 from groups.services import is_admin
 
 from . import services
-from .forms import BudgetForm, CategoryDeleteForm, CategoryForm, SimulationForm
+from .forms import BudgetForm, CategoryDeleteForm, CategoryForm, SavingsPlanForm, SimulationForm
 from .models import Budget, Category
 
 
@@ -355,3 +355,46 @@ class BudgetReportPdfView(GroupMemberRequiredMixin, View):
         response = HttpResponse(build_budget_report(group, month, user=request.user), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{report_filename(group, month)}"'
         return response
+
+
+class SavingsPlanView(GroupMemberRequiredMixin, GroupContextMixin, TemplateView):
+    """Plan d'économie : comment atteindre un objectif d'épargne, catégorie par catégorie."""
+
+    template_name = "budgets/savings_plan.html"
+    active_tab = "plan"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        group = self.get_group()
+        bound = "goal" in self.request.GET
+        form = SavingsPlanForm(self.request.GET if bound else None, group=group)
+        plan = None
+        if bound and form.is_valid():
+            plan, _ = services.savings_plan(group, form.cleaned_data["goal"], form.cleaned_data["months"])
+        context.update(
+            form=form,
+            plan=plan,
+            next_month=services.add_months(services.current_month(), 1),
+        )
+        return context
+
+
+class ApplySavingsPlanView(GroupAdminRequiredMixin, View):
+    """Applique le plan au mois suivant : un budget par catégorie avec la nouvelle limite."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        group = self.get_group()
+        form = SavingsPlanForm(request.POST, group=group)
+        if not form.is_valid():
+            messages.error(request, "Plan invalide : vérifiez l'objectif et le nombre de mois.")
+            return redirect("budgets:plan", gid=group.pk)
+        plan, categories = services.savings_plan(group, form.cleaned_data["goal"], form.cleaned_data["months"])
+        month = services.add_months(services.current_month(), 1)
+        created, updated = services.apply_savings_plan(group, plan, categories, month)
+        messages.success(
+            request,
+            f"Plan appliqué à {month:%m/%Y} : {created} budget(s) créé(s), {updated} mis à jour.",
+        )
+        return redirect(reverse("budgets:list", kwargs={"gid": group.pk}) + f"?month={month:%Y-%m}")

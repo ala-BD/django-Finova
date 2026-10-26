@@ -150,3 +150,25 @@ class SimulationForm(AccessibleFormMixin, forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["category"].queryset = Category.objects.filter(group=group)
         self.fields["savings_goal"].label = f"Objectif d'épargne ({group.currency})"
+
+
+class SavingsPlanForm(AccessibleFormMixin, forms.Form):
+    goal = forms.DecimalField(
+        label="Objectif d'épargne",
+        min_value=Decimal("1"),
+        max_digits=12,
+        decimal_places=3,
+        widget=forms.NumberInput(attrs={"step": "any", "min": "1", "inputmode": "decimal"}),
+    )
+    months = forms.IntegerField(
+        label="En combien de mois ?",
+        min_value=1,
+        max_value=24,
+        initial=3,
+        widget=forms.NumberInput(attrs={"min": "1", "max": "24"}),
+        help_text="Entre 1 et 24 mois.",
+    )
+
+    def __init__(self, *args, group, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["goal"].label = f"Objectif d'épargne ({group.currency})"

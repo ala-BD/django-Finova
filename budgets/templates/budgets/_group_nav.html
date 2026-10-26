@@ -4,5 +4,6 @@
         <li><a href="{% url 'budgets:list' group.pk %}" {% if active_tab == 'budgets' %}aria-current="page"{% endif %}>Budgets</a></li>
         <li><a href="{% url 'budgets:categories' group.pk %}" {% if active_tab == 'categories' %}aria-current="page"{% endif %}>Catégories</a></li>
         <li><a href="{% url 'budgets:simulate' group.pk %}" {% if active_tab == 'simulate' %}aria-current="page"{% endif %}>Simulateur « et si ? »</a></li>
+        <li><a href="{% url 'budgets:plan' group.pk %}" {% if active_tab == 'plan' %}aria-current="page"{% endif %}>Plan d'économie</a></li>
     </ul>
 </nav>

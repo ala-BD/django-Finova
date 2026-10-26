@@ -594,3 +594,40 @@ def analysis_payload(budget: Budget, analysis: dict | None) -> dict:
         }
     )
     return payload
+
+
+# --- Plan d'économie ----------------------------------------------------------------------
+
+
+def savings_plan(group, goal, months: int, today: date | None = None):
+    """
+    Répartit un objectif d'épargne entre les catégories du groupe (budgets/planning.py),
+    à partir des 6 derniers mois complets. Retourne (plan, {nom: Category}).
+    """
+    from .models import Category
+    from .planning import plan_savings
+
+    month = first_of_month(today or timezone.localdate())
+    categories = {category.name: category for category in Category.objects.filter(group=group)}
+    history = {
+        name: [row["total"] for row in monthly_history(group, category, month)]
+        for name, category in categories.items()
+    }
+    return plan_savings(history, goal, months), categories
+
+
+def apply_savings_plan(group, plan, categories: dict, month: date) -> tuple[int, int]:
+    """Crée ou met à jour les budgets du mois avec les limites du plan. Retourne (créés, modifiés)."""
+    created = updated = 0
+    with transaction.atomic():
+        for row in plan.categories:
+            if row.new_target <= 0:
+                continue
+            _, was_created = Budget.objects.update_or_create(
+                category=categories[row.name],
+                month=first_of_month(month),
+                defaults={"group": group, "limit_amount": row.new_target},
+            )
+            created += was_created
+            updated += not was_created
+    return created, updated
