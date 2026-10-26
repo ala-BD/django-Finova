@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Groupes · Finova{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Mes groupes</h1>
+    <a class="btn btn-primary btn-inline" href="{% url 'groups:create' %}">Créer un groupe</a>
+</div>
+
+{% if groups %}
+    <ul class="card-list">
+        {% for group in groups %}
+            <li class="card">
+                <h2><a href="{% url 'groups:detail' group.pk %}">{{ group.name }}</a></h2>
+                <p>{{ group.get_currency_display }} · {{ group.get_default_split_rule_display }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="empty">Vous n'appartenez encore à aucun groupe.</p>
+{% endif %}
+{% endblock %}

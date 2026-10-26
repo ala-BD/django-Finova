@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Invitation · Finova{% endblock %}
+{% block content %}
+<article class="auth-card">
+    <h1>Rejoindre {{ invitation.group.name }}</h1>
+    {% if error %}
+        <div class="form-errors" role="alert" aria-live="assertive">
+            <p>{{ error }}</p>
+        </div>
+        <p class="auth-alt"><a href="{% url 'groups:list' %}">Retour aux groupes</a></p>
+    {% else %}
+        <p>Vous êtes invité·e à rejoindre ce groupe ({{ invitation.group.get_currency_display }}).</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">Accepter l'invitation</button>
+        </form>
+    {% endif %}
+</article>
+{% endblock %}

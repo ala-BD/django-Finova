@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} · Finova{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ group.name }}</h1>
+        <p>{{ group.get_currency_display }} · règle {{ group.get_default_split_rule_display|lower }}</p>
+    </div>
+    <p class="actions">
+        {% if is_group_admin %}
+            <a class="btn btn-inline" href="{% url 'groups:edit' group.pk %}">Modifier</a>
+            <a class="btn btn-inline" href="{% url 'groups:invite' group.pk %}">Inviter</a>
+            <a class="btn btn-inline btn-danger" href="{% url 'groups:delete' group.pk %}">Archiver</a>
+        {% endif %}
+        <a class="btn btn-inline" href="{% url 'groups:leave' group.pk %}">Quitter</a>
+    </p>
+</div>
+
+{% if group.description %}
+    <p>{{ group.description }}</p>
+{% endif %}
+
+<section>
+    <h2>Membres</h2>
+    <table class="data-table">
+        <caption class="visually-hidden">Membres du groupe et soldes</caption>
+        <thead>
+            <tr>
+                <th scope="col">Membre</th>
+                <th scope="col">Rôle</th>
+                <th scope="col">Poids</th>
+                <th scope="col">Solde</th>
+                {% if is_group_admin %}<th scope="col">Actions</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+                <tr>
+                    <td>{{ member.user.get_full_name|default:member.user.username }}</td>
+                    <td>{{ member.get_role_display }}</td>
+                    <td>{{ member.weight }}</td>
+                    <td>{{ member.balance }} {{ group.currency }}</td>
+                    {% if is_group_admin %}
+                        <td>
+                            <a href="{% url 'groups:member_edit' group.pk member.pk %}">Éditer</a>
+                        </td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% if is_group_admin %}
+<section>
+    <h2>Invitations en attente</h2>
+    {% if pending_invitations %}
+        <ul>
+            {% for invite in pending_invitations %}
+                <li>{{ invite.email }} — expire le {{ invite.expires_at|date:"d/m/Y" }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">Aucune invitation en attente.</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

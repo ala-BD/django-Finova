@@ -260,11 +260,13 @@ main {
     display: inline-block;
     padding: 0.65rem 1.1rem;
     border-radius: 0.5rem;
-    border: 2px solid transparent;
+    border: 2px solid var(--border);
     font: inherit;
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .btn-primary {
@@ -276,6 +278,80 @@ main {
 .btn-primary:hover {
     background: var(--accent-hover);
     color: #fff;
+}
+
+.btn-inline {
+    width: auto;
+}
+
+.btn-danger {
+    background: #9f1239;
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: #881337;
+    color: #fff;
+}
+
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+    margin: 0 0 0.25rem;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.card-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+}
+
+.card h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+}
+
+.data-table th,
+.data-table td {
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.empty {
+    color: var(--muted);
+}
+
+.auth-card-wide {
+    max-width: 32rem;
 }
 
 footer {

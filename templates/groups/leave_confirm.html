@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Quitter {{ group.name }} · Finova{% endblock %}
+{% block content %}
+<article class="auth-card">
+    <h1>Quitter le groupe</h1>
+    {% if allowed %}
+        <p>Confirmez que vous voulez quitter « {{ group.name }} ».</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">Quitter</button>
+        </form>
+    {% else %}
+        <div class="form-errors" role="alert" aria-live="assertive">
+            <p>{{ reason }}</p>
+        </div>
+    {% endif %}
+    <p class="auth-alt"><a href="{% url 'groups:detail' group.pk %}">Annuler</a></p>
+</article>
+{% endblock %}

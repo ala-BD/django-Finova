@@ -5,5 +5,16 @@ from . import views
 app_name = "groups"
 
 urlpatterns = [
-    path("", views.placeholder, name="list"),
+    path("", views.GroupListView.as_view(), name="list"),
+    path("new/", views.GroupCreateView.as_view(), name="create"),
+    path("<int:gid>/", views.GroupDetailView.as_view(), name="detail"),
+    path("<int:gid>/edit/", views.GroupUpdateView.as_view(), name="edit"),
+    path("<int:gid>/delete/", views.GroupArchiveView.as_view(), name="delete"),
+    path("<int:gid>/leave/", views.GroupLeaveView.as_view(), name="leave"),
+    path("<int:gid>/invite/", views.InvitationCreateView.as_view(), name="invite"),
+    path(
+        "<int:gid>/members/<int:mid>/edit/",
+        views.MembershipUpdateView.as_view(),
+        name="member_edit",
+    ),
 ]

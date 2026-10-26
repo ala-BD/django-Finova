@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · Finova{% endblock %}
+{% block content %}
+<article class="auth-card auth-card-wide">
+    <h1>{{ title }}</h1>
+    {% if form.non_field_errors %}
+        <div class="form-errors" role="alert" aria-live="assertive">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+    {% endif %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.name %}
+        {% include "includes/form_field.html" with field=form.description %}
+        {% include "includes/form_field.html" with field=form.currency %}
+        {% include "includes/form_field.html" with field=form.default_split_rule %}
+        <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+    </form>
+    {% if group %}
+        <p class="auth-alt"><a href="{% url 'groups:detail' group.pk %}">Annuler</a></p>
+    {% else %}
+        <p class="auth-alt"><a href="{% url 'groups:list' %}">Annuler</a></p>
+    {% endif %}
+</article>
+{% endblock %}
