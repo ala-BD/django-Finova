@@ -1,0 +1,253 @@
+{
+  "dataset": {
+    "file": "ml/data/m4_demo_expenses.csv",
+    "months": 14,
+    "evaluated_months": 12,
+    "categories": [
+      "Alimentation",
+      "Factures",
+      "Logement",
+      "Loisirs",
+      "Restaurants",
+      "Transport"
+    ],
+    "checkpoints": [
+      5,
+      10,
+      15,
+      20,
+      25
+    ],
+    "predictions": 360,
+    "note": "Jeu de démonstration généré (ml/m4_generate_demo.py), annoncé comme tel."
+  },
+  "overall": {
+    "naive": {
+      "mae": 65.335,
+      "rmse": 108.035,
+      "gain_vs_naive_pct": 0.0
+    },
+    "pace": {
+      "mae": 104.83,
+      "rmse": 159.795,
+      "gain_vs_naive_pct": -60.4
+    },
+    "blend": {
+      "mae": 66.445,
+      "rmse": 101.478,
+      "gain_vs_naive_pct": -1.7
+    },
+    "finova": {
+      "mae": 45.581,
+      "rmse": 78.857,
+      "gain_vs_naive_pct": 30.2
+    }
+  },
+  "by_checkpoint": {
+    "5": {
+      "naive": {
+        "mae": 65.335,
+        "rmse": 108.035
+      },
+      "pace": {
+        "mae": 182.706,
+        "rmse": 248.372
+      },
+      "blend": {
+        "mae": 99.585,
+        "rmse": 147.583
+      },
+      "finova": {
+        "mae": 58.276,
+        "rmse": 97.653
+      }
+    },
+    "10": {
+      "naive": {
+        "mae": 65.335,
+        "rmse": 108.035
+      },
+      "pace": {
+        "mae": 128.19,
+        "rmse": 172.327
+      },
+      "blend": {
+        "mae": 72.861,
+        "rmse": 103.264
+      },
+      "finova": {
+        "mae": 47.879,
+        "rmse": 77.492
+      }
+    },
+    "15": {
+      "naive": {
+        "mae": 65.335,
+        "rmse": 108.035
+      },
+      "pace": {
+        "mae": 104.686,
+        "rmse": 148.447
+      },
+      "blend": {
+        "mae": 71.454,
+        "rmse": 98.019
+      },
+      "finova": {
+        "mae": 47.547,
+        "rmse": 81.668
+      }
+    },
+    "20": {
+      "naive": {
+        "mae": 65.335,
+        "rmse": 108.035
+      },
+      "pace": {
+        "mae": 70.291,
+        "rmse": 103.959
+      },
+      "blend": {
+        "mae": 53.566,
+        "rmse": 79.749
+      },
+      "finova": {
+        "mae": 41.475,
+        "rmse": 73.517
+      }
+    },
+    "25": {
+      "naive": {
+        "mae": 65.335,
+        "rmse": 108.035
+      },
+      "pace": {
+        "mae": 38.278,
+        "rmse": 58.676
+      },
+      "blend": {
+        "mae": 34.761,
+        "rmse": 55.47
+      },
+      "finova": {
+        "mae": 32.727,
+        "rmse": 58.963
+      }
+    }
+  },
+  "by_category": {
+    "Alimentation": {
+      "naive": {
+        "mae": 195.085,
+        "rmse": 232.584
+      },
+      "pace": {
+        "mae": 172.228,
+        "rmse": 239.611
+      },
+      "blend": {
+        "mae": 111.399,
+        "rmse": 154.756
+      },
+      "finova": {
+        "mae": 114.752,
+        "rmse": 147.362
+      }
+    },
+    "Factures": {
+      "naive": {
+        "mae": 21.477,
+        "rmse": 28.948
+      },
+      "pace": {
+        "mae": 189.016,
+        "rmse": 204.96
+      },
+      "blend": {
+        "mae": 94.567,
+        "rmse": 103.035
+      },
+      "finova": {
+        "mae": 5.202,
+        "rmse": 13.202
+      }
+    },
+    "Logement": {
+      "naive": {
+        "mae": 0.0,
+        "rmse": 0.0
+      },
+      "pace": {
+        "mae": 0.0,
+        "rmse": 0.0
+      },
+      "blend": {
+        "mae": 0.0,
+        "rmse": 0.0
+      },
+      "finova": {
+        "mae": 0.0,
+        "rmse": 0.0
+      }
+    },
+    "Loisirs": {
+      "naive": {
+        "mae": 39.206,
+        "rmse": 46.054
+      },
+      "pace": {
+        "mae": 67.036,
+        "rmse": 84.945
+      },
+      "blend": {
+        "mae": 46.895,
+        "rmse": 55.05
+      },
+      "finova": {
+        "mae": 36.18,
+        "rmse": 43.413
+      }
+    },
+    "Restaurants": {
+      "naive": {
+        "mae": 82.69,
+        "rmse": 92.473
+      },
+      "pace": {
+        "mae": 155.26,
+        "rmse": 204.967
+      },
+      "blend": {
+        "mae": 111.855,
+        "rmse": 146.879
+      },
+      "finova": {
+        "mae": 83.13,
+        "rmse": 106.317
+      }
+    },
+    "Transport": {
+      "naive": {
+        "mae": 53.553,
+        "rmse": 66.515
+      },
+      "pace": {
+        "mae": 45.441,
+        "rmse": 67.505
+      },
+      "blend": {
+        "mae": 33.955,
+        "rmse": 51.154
+      },
+      "finova": {
+        "mae": 34.223,
+        "rmse": 47.252
+      }
+    }
+  },
+  "latency_ms": {
+    "mean": 0.074,
+    "p95": 0.14,
+    "max": 0.185
+  }
+}
