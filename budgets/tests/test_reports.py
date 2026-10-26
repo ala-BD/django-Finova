@@ -110,4 +110,5 @@ class ReportViewsTests(TestCase):
         self.client.force_login(self.member)
         response = self.client.get(reverse("budgets:list", kwargs={"gid": self.group.pk}))
         self.assertContains(response, "Télécharger le PDF")
-        self.assertContains(response, "Recevoir par email")
+        self.assertContains(response, "Recevoir le PDF à")
+        self.assertContains(response, 'value="yahya@example.com"')
