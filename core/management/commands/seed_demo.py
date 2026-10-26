@@ -20,7 +20,7 @@ from django.utils import timezone
 from budgets.models import Budget, Category
 from budgets.services import add_months, check_budget_alerts, first_of_month
 from expenses.models import Expense
-from groups.models import Group, Membership, SplitRule
+from groups.models import Group, Membership
 
 DEMO_PASSWORD = "Finova-demo-2026"
 DEMO_GROUP = "Coloc Lac 2 (démo)"
@@ -91,7 +91,7 @@ class Command(BaseCommand):
             name=DEMO_GROUP,
             description="Colocation de six étudiants et jeunes actifs (données générées).",
             currency="TND",
-            default_split_rule=SplitRule.WEIGHTED,
+            default_split_rule=Group.SplitRule.BY_WEIGHT,
             created_by=users["linda"],
         )
         members = [
@@ -125,7 +125,7 @@ class Command(BaseCommand):
                                 amount=Decimal(str(round(amount, 3))),
                                 currency="TND",
                                 expense_date=date(month.year, month.month, day),
-                                split_rule=SplitRule.WEIGHTED,
+                                split_rule=Group.SplitRule.BY_WEIGHT,
                             )
                         )
 

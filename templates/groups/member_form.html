@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Éditer un membre · Finova{% endblock %}
+{% block content %}
+<article class="auth-card">
+    <h1>Membre : {{ object.user.get_full_name|default:object.user.username }}</h1>
+    <p>Profil de revenu : {{ income_profile }} (poids suggéré {{ suggested_weight }}).</p>
+    {% if form.non_field_errors %}
+        <div class="form-errors" role="alert" aria-live="assertive">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+    {% endif %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.role %}
+        {% include "includes/form_field.html" with field=form.weight %}
+        {% include "includes/form_field.html" with field=form.use_profile_weight %}
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </form>
+    <p class="auth-alt"><a href="{% url 'groups:detail' group.pk %}">Annuler</a></p>
+</article>
+{% endblock %}

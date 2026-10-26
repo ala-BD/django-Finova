@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from groups.models import SplitRule
+from groups.models import Group
 
 MONEY = {"max_digits": 12, "decimal_places": 3}
 
@@ -49,7 +49,10 @@ class Expense(models.Model):
     currency = models.CharField("devise", max_length=3, default="TND")
     expense_date = models.DateField("date")
     split_rule = models.CharField(
-        "règle de partage", max_length=20, choices=SplitRule.choices, default=SplitRule.EQUAL
+        "règle de partage",
+        max_length=32,
+        choices=Group.SplitRule.choices,
+        default=Group.SplitRule.EQUAL,
     )
     tax_amount = models.DecimalField("taxe", **MONEY, default=Decimal("0"))
     tip_amount = models.DecimalField("pourboire", **MONEY, default=Decimal("0"))

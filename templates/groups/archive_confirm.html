@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Archiver {{ group.name }} · Finova{% endblock %}
+{% block content %}
+<article class="auth-card">
+    <h1>Archiver le groupe</h1>
+    <p>Le groupe « {{ group.name }} » sera archivé (il disparaîtra de la liste, sans suppression définitive).</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Confirmer l'archivage</button>
+    </form>
+    <p class="auth-alt"><a href="{% url 'groups:detail' group.pk %}">Annuler</a></p>
+</article>
+{% endblock %}

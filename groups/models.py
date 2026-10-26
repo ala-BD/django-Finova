@@ -1,46 +1,55 @@
-"""
-Modèles M1 (Ala) — gelés en S1 (intégration : Linda).
-
-La logique métier (invitations, règle de partage, quitter un groupe) vit dans
-groups/services.py ; ces modèles ne fixent que la structure partagée.
-"""
-
 import uuid
 from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinLengthValidator, MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
-
-INVITATION_VALIDITY = timedelta(days=7)
-
-
-class SplitRule(models.TextChoices):
-    EQUAL = "equal", "Égale"
-    WEIGHTED = "weighted", "Proportionnelle au revenu (poids)"
-    CONSUMPTION = "consumption", "Proportionnelle à la consommation"
 
 
 class Group(models.Model):
-    name = models.CharField("nom", max_length=80, validators=[MinLengthValidator(3)])
+    class SplitRule(models.TextChoices):
+        EQUAL = "equal", "Égale"
+        BY_WEIGHT = "by_weight", "Proportionnelle au revenu"
+        BY_CONSUMPTION = "by_consumption", "Proportionnelle à la consommation"
+
+    class Currency(models.TextChoices):
+        TND = "TND", "TND"
+        EUR = "EUR", "EUR"
+        USD = "USD", "USD"
+        MAD = "MAD", "MAD"
+
+    name = models.CharField(
+        "nom",
+        max_length=80,
+        validators=[MinLengthValidator(3)],
+    )
     description = models.TextField("description", blank=True)
-    currency = models.CharField("devise", max_length=3, default="TND")
+    currency = models.CharField(
+        "devise",
+        max_length=3,
+        choices=Currency.choices,
+        default=Currency.TND,
+    )
     default_split_rule = models.CharField(
-        "règle de partage par défaut",
-        max_length=20,
+        "règle de partage",
+        max_length=32,
         choices=SplitRule.choices,
         default=SplitRule.EQUAL,
     )
     is_archived = models.BooleanField("archivé", default=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name="created_groups",
-        verbose_name="créé par",
+        verbose_name="créateur",
     )
-    created_at = models.DateTimeField("créé le", auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["name"]
@@ -50,53 +59,91 @@ class Group(models.Model):
     def __str__(self):
         return self.name
 
+    def has_expenses(self) -> bool:
+        from django.apps import apps
+        from django.core.exceptions import FieldError
+
+        try:
+            Expense = apps.get_model("expenses", "Expense")
+        except LookupError:
+            return False
+        try:
+            return Expense.objects.filter(group=self).exists()
+        except (FieldError, AttributeError):
+            return False
+
+    def active_memberships(self):
+        return self.memberships.filter(is_active=True).select_related("user")
+
+    def admin_count(self) -> int:
+        return self.active_memberships().filter(role=Membership.Role.ADMIN).count()
+
 
 class Membership(models.Model):
     class Role(models.TextChoices):
-        ADMIN = "admin", "Administrateur"
+        ADMIN = "admin", "Admin"
         MEMBER = "member", "Membre"
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="memberships",
-        verbose_name="utilisateur",
-    )
     group = models.ForeignKey(
         Group,
         on_delete=models.CASCADE,
         related_name="memberships",
         verbose_name="groupe",
     )
-    role = models.CharField("rôle", max_length=10, choices=Role.choices, default=Role.MEMBER)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="group_memberships",
+        verbose_name="utilisateur",
+    )
+    role = models.CharField(
+        "rôle",
+        max_length=20,
+        choices=Role.choices,
+        default=Role.MEMBER,
+    )
     weight = models.DecimalField(
         "poids",
-        max_digits=6,
-        decimal_places=2,
-        default=Decimal("1"),
-        validators=[MinValueValidator(Decimal("0.01"))],
+        max_digits=8,
+        decimal_places=3,
+        default=Decimal("1.000"),
+        validators=[MinValueValidator(Decimal("0.001"))],
     )
     is_active = models.BooleanField("actif", default=True)
-    joined_at = models.DateTimeField("rejoint le", auto_now_add=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["group", "user__username"]
-        verbose_name = "adhésion"
-        verbose_name_plural = "adhésions"
+        ordering = ["-role", "user__username"]
+        verbose_name = "appartenance"
+        verbose_name_plural = "appartenances"
         constraints = [
-            models.UniqueConstraint(fields=["user", "group"], name="unique_membership_per_group"),
-            models.CheckConstraint(condition=models.Q(weight__gt=0), name="membership_weight_positive"),
+            models.UniqueConstraint(
+                fields=["group", "user"],
+                name="unique_member_per_group",
+            ),
+            models.CheckConstraint(
+                condition=Q(weight__gt=0),
+                name="weight_strictly_positive",
+            ),
         ]
 
     def __str__(self):
         return f"{self.user} · {self.group}"
 
-    def is_admin(self):
-        return self.role == self.Role.ADMIN
-
-
-def default_invitation_expiry():
-    return timezone.now() + INVITATION_VALIDITY
+    def clean(self):
+        if self.weight is not None and self.weight <= 0:
+            raise ValidationError({"weight": "Le poids doit être strictement positif."})
+        if self.pk and self.is_active:
+            was_admin = (
+                Membership.objects.filter(pk=self.pk, role=self.Role.ADMIN)
+                .exclude(role=self.role)
+                .exists()
+            )
+            becoming_non_admin = self.role != self.Role.ADMIN
+            if was_admin and becoming_non_admin and self.group.admin_count() <= 1:
+                raise ValidationError(
+                    {"role": "Le groupe doit toujours conserver au moins un admin."}
+                )
 
 
 class Invitation(models.Model):
@@ -111,25 +158,50 @@ class Invitation(models.Model):
         related_name="invitations",
         verbose_name="groupe",
     )
-    email = models.EmailField("email")
-    token = models.UUIDField("jeton", default=uuid.uuid4, unique=True, editable=False)
-    status = models.CharField("statut", max_length=10, choices=Status.choices, default=Status.PENDING)
-    expires_at = models.DateTimeField("expire le", default=default_invitation_expiry)
+    email = models.EmailField("e-mail")
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name="sent_invitations",
         verbose_name="invité par",
     )
-    created_at = models.DateTimeField("créée le", auto_now_add=True)
+    status = models.CharField(
+        "statut",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    expires_at = models.DateTimeField("expire le")
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "invitation"
         verbose_name_plural = "invitations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group", "email"],
+                condition=Q(status="pending"),
+                name="one_pending_invite_per_email",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.email} → {self.group}"
 
-    def is_valid(self):
-        return self.status == self.Status.PENDING and self.expires_at > timezone.now()
+    def save(self, *args, **kwargs):
+        self.email = (self.email or "").strip().lower()
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=7)
+        super().save(*args, **kwargs)
+
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    def refresh_expiration_status(self):
+        if self.status == self.Status.PENDING and self.is_expired():
+            self.status = self.Status.EXPIRED
+            self.save(update_fields=["status"])

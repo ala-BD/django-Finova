@@ -10,6 +10,8 @@ class AccessibleFormMixin:
         super().__init__(*args, **kwargs)
         self.label_suffix = ""
         for field in self.fields.values():
+            if isinstance(field.widget, forms.CheckboxInput):
+                continue
             classes = field.widget.attrs.get("class", "")
             if "input" not in classes.split():
                 field.widget.attrs["class"] = f"{classes} input".strip()

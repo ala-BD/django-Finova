@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} · Finova{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ group.name }}</h1>
+        <p>{{ group.get_currency_display }} · règle {{ group.get_default_split_rule_display|lower }}</p>
+    </div>
+    <p class="actions">
+        {% if is_group_admin %}
+            <a class="btn btn-inline" href="{% url 'groups:edit' group.pk %}">Modifier</a>
+            <a class="btn btn-inline" href="{% url 'groups:invite' group.pk %}">Inviter</a>
+            <a class="btn btn-inline btn-danger" href="{% url 'groups:delete' group.pk %}">Archiver</a>
+        {% endif %}
+        <a class="btn btn-inline" href="{% url 'groups:leave' group.pk %}">Quitter</a>
+    </p>
+</div>
+
+{% if group.description %}
+    <p>{{ group.description }}</p>
+{% endif %}
+
+<section>
+    <h2>Membres</h2>
+    <table class="data-table">
+        <caption class="visually-hidden">Membres du groupe et soldes</caption>
+        <thead>
+            <tr>
+                <th scope="col">Membre</th>
+                <th scope="col">Rôle</th>
+                <th scope="col">Poids (profil)</th>
+                <th scope="col">Solde</th>
+                {% if is_group_admin %}<th scope="col">Actions</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+                <tr>
+                    <td>{{ member.user.get_full_name|default:member.user.username }}</td>
+                    <td>{{ member.get_role_display }}</td>
+                    <td>
+                        {{ member.weight }}
+                        <span class="muted">({{ member.user.get_income_profile_display }} → {{ member.suggested_weight }})</span>
+                    </td>
+                    <td>{{ member.balance }} {{ group.currency }}</td>
+                    {% if is_group_admin %}
+                        <td>
+                            <a href="{% url 'groups:member_edit' group.pk member.pk %}">Éditer</a>
+                        </td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% if is_group_admin %}
+<section>
+    <h2>Invitations en attente</h2>
+    {% if pending_invitations %}
+        <ul>
+            {% for invite in pending_invitations %}
+                <li>{{ invite.email }} — expire le {{ invite.expires_at|date:"d/m/Y" }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">Aucune invitation en attente.</p>
+    {% endif %}
+</section>
+{% endif %}
+
+<section class="equity">
+    <h2>Profils d'équité</h2>
+    <p>{{ preview.note }}</p>
+    <form class="preview-form" method="get">
+        {% include "includes/form_field.html" with field=preview_form.amount %}
+        <button type="submit" class="btn btn-primary btn-inline">Simuler la répartition</button>
+    </form>
+    <table class="data-table">
+        <caption>
+            Répartition de {{ preview.amount }} {{ group.currency }}
+            ({{ group.get_default_split_rule_display|lower }})
+        </caption>
+        <thead>
+            <tr>
+                <th scope="col">Membre</th>
+                <th scope="col">Poids</th>
+                <th scope="col">Part</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in preview.rows %}
+                <tr>
+                    <td>{{ row.membership.user.get_full_name|default:row.membership.user.username }}</td>
+                    <td>{{ row.weight }}</td>
+                    <td>{{ row.share }} {{ group.currency }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

@@ -260,11 +260,13 @@ main {
     display: inline-block;
     padding: 0.65rem 1.1rem;
     border-radius: 0.5rem;
-    border: 2px solid transparent;
+    border: 2px solid var(--border);
     font: inherit;
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
+    background: var(--surface);
+    color: var(--text);
 }
 
 .btn-primary {
@@ -276,6 +278,102 @@ main {
 .btn-primary:hover {
     background: var(--accent-hover);
     color: #fff;
+}
+
+.btn-inline {
+    width: auto;
+}
+
+.btn-danger {
+    background: #9f1239;
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: #881337;
+    color: #fff;
+}
+
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+    margin: 0 0 0.25rem;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.card-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+}
+
+.card h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+}
+
+.data-table th,
+.data-table td {
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.empty {
+    color: var(--muted);
+}
+
+.auth-card-wide {
+    max-width: 32rem;
+}
+
+.muted {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 0.9rem;
+}
+
+.equity {
+    margin-top: 2rem;
+}
+
+.preview-form {
+    max-width: 20rem;
+    margin-bottom: 1rem;
+}
+
+.data-table caption {
+    caption-side: top;
+    text-align: left;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
 }
 
 footer {
@@ -292,4 +390,161 @@ footer {
         margin: 1rem 0;
         padding: 1.25rem;
     }
+}
+
+/* ── Partie IA ── */
+.ai-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.ai-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), #1a9e96);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+}
+
+.ai-subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin: 0.25rem 0 0;
+}
+
+.ai-input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.ai-input {
+    flex: 1;
+    padding: 0.65rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ai-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(15, 95, 89, 0.15);
+}
+
+.btn-ai {
+    white-space: nowrap;
+    min-width: 7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+/* Spinner */
+.spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Carte résultat */
+.ai-result-card {
+    background: var(--ok-bg);
+    border: 1px solid #bbf7d0;
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.ai-result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.05rem;
+}
+
+.ai-ok-badge {
+    background: var(--ok);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.55rem;
+    font-weight: 700;
+}
+
+.ai-tag-list {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.ai-tag {
+    background: rgba(15,95,89,0.1);
+    color: var(--accent);
+    border-radius: 999px;
+    font-size: 0.82rem;
+    padding: 0.2rem 0.65rem;
+    font-weight: 500;
+}
+
+.ai-budget-table {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.ai-redirect-msg {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+    margin: 0.5rem 0 0;
+    animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+
+/* Séparateur */
+.ai-separator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.ai-separator::before,
+.ai-separator::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+@media (max-width: 40rem) {
+    .ai-input-row { flex-direction: column; }
+    .btn-ai       { width: 100%; }
 }
