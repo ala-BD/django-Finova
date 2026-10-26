@@ -89,8 +89,10 @@ class ComputeBalancesTests(SettlementFixturesMixin, TestCase):
         self.assertTrue(can_leave(self.linda, self.group)[0])
 
     def test_expense_flows_none_until_m2_models_exist(self):
-        self.assertIsNone(services.expense_flows(self.group))
-        self.assertFalse(services.balance_overview(self.group)["expenses_integrated"])
+        # Simule l'absence des modèles M2 : le test reste valable une fois M2 fusionné
+        with patch("settlements.services.apps.get_model", side_effect=LookupError):
+            self.assertIsNone(services.expense_flows(self.group))
+            self.assertFalse(services.balance_overview(self.group)["expenses_integrated"])
 
 
 class SettlementWorkflowTests(SettlementFixturesMixin, TestCase):
