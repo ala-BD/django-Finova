@@ -1,0 +1,27 @@
+{
+  "test_cases": 120,
+  "feasible_cases": 120,
+  "vs_default_3_monthly": {
+    "cases": 31,
+    "mean_risk_baseline": 0.43,
+    "mean_risk_suggested": 0.425,
+    "mean_reduction_points": 0.5,
+    "high_risk_baseline": 12,
+    "high_risk_suggested": 12,
+    "never_worse": true
+  },
+  "vs_max_spread_12_monthly": {
+    "cases": 120,
+    "mean_risk_baseline": 0.541,
+    "mean_risk_suggested": 0.401,
+    "mean_reduction_points": 14.0,
+    "high_risk_baseline": 60,
+    "high_risk_suggested": 37,
+    "never_worse": true
+  },
+  "latency_ms": {
+    "mean": 0.87,
+    "p95": 1.13
+  },
+  "note": "Gain mesuré avec le modèle de risque (jeu de démonstration généré)."
+}

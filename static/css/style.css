@@ -548,3 +548,533 @@ footer {
     .ai-input-row { flex-direction: column; }
     .btn-ai       { width: 100%; }
 }
+
+/* ── Pages d'erreur et erreurs de formulaire (Imem) ── */
+.error-page {
+    max-width: 36rem;
+    margin: 2rem auto;
+    text-align: center;
+}
+
+.error-code {
+    margin: 0;
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.error-links {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.form-errors-title {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+}
+
+.form-errors ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.form-errors a {
+    color: var(--error);
+    font-weight: 600;
+}
+
+/* ── M3 · Soldes et remboursements (Imem) ── */
+.sub-nav ul {
+    gap: 0.25rem 1.25rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.section {
+    margin-top: 2rem;
+}
+
+.section-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.section-header h2 {
+    margin: 0;
+}
+
+.section-header .actions,
+.section-header form {
+    margin: 0;
+}
+
+.data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.row-me td {
+    background: #f0fdfa;
+}
+
+.status {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #f5f5f4;
+    color: var(--muted);
+}
+
+.status-ok {
+    background: var(--ok-bg);
+    color: var(--ok);
+}
+
+.status-ko {
+    background: var(--error-bg);
+    color: var(--error);
+}
+
+.status-wait {
+    background: #fffbeb;
+    color: #78350f;
+}
+
+.transfer-list {
+    padding-left: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.transfer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.filter-form,
+.inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-bottom: 1rem;
+}
+
+.filter-form .field,
+.inline-form .field {
+    margin-bottom: 0;
+    min-width: 12rem;
+}
+
+progress,
+meter {
+    width: 100%;
+    max-width: 24rem;
+    height: 1rem;
+}
+
+.risk-card {
+    margin-top: 2rem;
+}
+
+.risk-value {
+    font-weight: 700;
+}
+
+.risk-high {
+    color: var(--error);
+}
+
+.risk-low {
+    color: var(--ok);
+}
+
+.features {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+}
+
+.features dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.pagination {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+textarea.input {
+    resize: vertical;
+}
+
+/* ── M3 · IA et exports (Imem) ── */
+.ai-box {
+    margin: 1rem 0 1.5rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius);
+    background: #f8fafc;
+}
+
+.ai-box h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.05rem;
+}
+
+.ai-box .btn-ai .spinner {
+    border-color: rgba(0, 0, 0, 0.2);
+    border-top-color: var(--accent);
+}
+
+.suggest-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.suggestion {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.explain-title {
+    margin: 1rem 0 0.25rem;
+    font-size: 1rem;
+}
+
+.explain-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.explain-list li {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1.4fr) 2fr minmax(8rem, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.explain-bar {
+    height: 0.65rem;
+    width: var(--share);
+    min-width: 2px;
+    border-radius: 999px;
+}
+
+.explain-up {
+    background: var(--error);
+}
+
+.explain-down {
+    background: var(--ok);
+}
+
+.explain-effect {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.chart-box {
+    margin: 0 0 1rem;
+    position: relative;
+    max-width: 40rem;
+}
+
+@media (max-width: 40rem) {
+    .explain-list li {
+        grid-template-columns: 1fr;
+        gap: 0.2rem;
+    }
+}
+
+/* ── M3 · Simulateur de risque et graphe des dettes (Imem) ── */
+.back {
+    margin: 0 0 0.25rem;
+}
+
+.simulator {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.sim-controls fieldset {
+    margin: 0 0 1rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.sim-controls legend {
+    font-weight: 700;
+    padding: 0 0.35rem;
+}
+
+.sim-field {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.25rem 0.75rem;
+    align-items: center;
+    margin-bottom: 0.9rem;
+}
+
+.sim-field label,
+.sim-label {
+    font-weight: 600;
+}
+
+.sim-field input[type="range"] {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--accent);
+}
+
+.sim-field output {
+    grid-row: 1;
+    grid-column: 2;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.sim-field .help {
+    grid-column: 1 / -1;
+}
+
+.sim-radios {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+}
+
+.sim-result {
+    position: sticky;
+    top: 1rem;
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.sim-result h3 {
+    font-size: 1rem;
+    margin: 1.25rem 0 0.5rem;
+}
+
+.gauge {
+    --p: 0;
+    --color: var(--ok);
+    width: 9.5rem;
+    aspect-ratio: 1;
+    margin: 0 auto;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(closest-side, var(--surface) 76%, transparent 77% 100%),
+        conic-gradient(var(--color) calc(var(--p) * 1%), #e7e5e4 0);
+    transition: --p 0.2s;
+}
+
+.gauge-high {
+    --color: var(--error);
+}
+
+.gauge-value {
+    font-size: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.sim-verdict {
+    text-align: center;
+    font-weight: 700;
+}
+
+.sim-curve {
+    width: 100%;
+    height: auto;
+    max-width: 26rem;
+    overflow: visible;
+}
+
+.curve-line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.5;
+}
+
+.curve-threshold {
+    stroke: var(--error);
+    stroke-dasharray: 4 4;
+}
+
+.curve-dot {
+    fill: var(--surface);
+    stroke: var(--accent);
+    stroke-width: 2;
+    cursor: pointer;
+}
+
+.curve-current {
+    fill: var(--accent);
+}
+
+.curve-text {
+    font-size: 10px;
+    fill: var(--muted);
+}
+
+.small {
+    font-size: 0.85rem;
+}
+
+.graph-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.graph-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.debt-graph {
+    width: 100%;
+    height: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.graph-edge path {
+    fill: none;
+    stroke: #57534e;
+    transition: opacity 0.25s;
+}
+
+.graph-arrow {
+    fill: #57534e;
+}
+
+.graph-amount {
+    font-size: 13px;
+    font-weight: 700;
+    fill: var(--text);
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 4px;
+}
+
+.graph-dim {
+    opacity: 0.15;
+}
+
+.graph-node {
+    cursor: pointer;
+}
+
+.graph-node circle {
+    stroke-width: 3;
+}
+
+.graph-creditor circle {
+    fill: var(--ok-bg);
+    stroke: var(--ok);
+}
+
+.graph-debtor circle {
+    fill: var(--error-bg);
+    stroke: var(--error);
+}
+
+.graph-even circle {
+    fill: #f5f5f4;
+    stroke: #78716c;
+}
+
+.graph-node:focus {
+    outline: none;
+}
+
+.graph-node:focus circle,
+.graph-selected circle {
+    stroke: var(--focus);
+    stroke-width: 5;
+}
+
+.graph-name {
+    font-size: 12px;
+    font-weight: 700;
+    fill: var(--text);
+}
+
+.graph-balance {
+    font-size: 11px;
+    fill: var(--muted);
+}
+
+.graph-details h3 {
+    margin-top: 0;
+}
+
+.graph-details ul {
+    margin: 0 0 0.5rem;
+    padding-left: 1.1rem;
+}
+
+.graph-text {
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 52rem) {
+    .simulator,
+    .graph-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sim-result {
+        position: static;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .graph-edge path,
+    .gauge {
+        transition: none;
+    }
+}

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}Remboursement · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+{% include "settlements/_nav.html" %}
+<div class="page-header">
+    <div>
+        <h1>{{ settlement.amount }} {{ group.currency }}</h1>
+        <p>
+            {{ settlement.payer.user.get_full_name|default:settlement.payer.user.username }}
+            → {{ settlement.receiver.user.get_full_name|default:settlement.receiver.user.username }}
+            · déclaré le {{ settlement.created_at|date:"d/m/Y à H:i" }}
+        </p>
+        <p>{% include "settlements/_status.html" %}
+            {% if settlement.confirmed_at %}<span class="muted">le {{ settlement.confirmed_at|date:"d/m/Y" }}</span>{% endif %}
+            {% if settlement.rejected_at %}<span class="muted">le {{ settlement.rejected_at|date:"d/m/Y" }}</span>{% endif %}
+        </p>
+        {% if settlement.note %}<p class="muted">Note : {{ settlement.note }}</p>{% endif %}
+    </div>
+    {% if is_receiver and settlement.is_pending %}
+        <div class="actions">
+            {% if can_confirm %}
+                <form method="post" action="{% url 'settlements:confirm' group.pk settlement.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-inline">Confirmer la réception</button>
+                </form>
+            {% endif %}
+            <form method="post" action="{% url 'settlements:reject' group.pk settlement.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-inline">Rejeter</button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+
+{% if is_receiver and settlement.is_pending and not can_confirm %}
+    <p class="message message-info">La confirmation sera possible quand toutes les échéances auront été payées.</p>
+{% elif settlement.is_pending and not is_receiver %}
+    <p class="message message-info">
+        En attente de confirmation par {{ settlement.receiver.user.get_full_name|default:settlement.receiver.user.username }} :
+        seul le bénéficiaire peut confirmer.
+    </p>
+{% endif %}
+
+<section class="section">
+    <div class="section-header">
+        <h2>Échéancier</h2>
+        {% if can_manage_plan %}
+            <p class="actions">
+                {% if plan %}
+                    {% if not plan.has_payments %}
+                        <a class="btn btn-inline" href="{% url 'settlements:plan_edit' group.pk settlement.pk %}">Modifier</a>
+                        <a class="btn btn-inline btn-danger" href="{% url 'settlements:plan_delete' group.pk settlement.pk %}">Supprimer</a>
+                    {% endif %}
+                {% else %}
+                    <a class="btn btn-primary btn-inline" href="{% url 'settlements:plan_create' group.pk settlement.pk %}">Créer un échéancier</a>
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+
+    {% if plan %}
+        <p>
+            {{ plan.installments_count }} échéances, {{ plan.get_frequency_display|lower }},
+            à partir du {{ plan.start_date|date:"d/m/Y" }} — {{ plan.get_status_display|lower }}.
+        </p>
+        <p class="actions">
+            <a class="btn btn-inline" href="{% url 'settlements:plan_pdf' group.pk settlement.pk %}" download>Télécharger le PDF</a>
+            <a class="btn btn-inline" href="{% url 'settlements:plan_ics' group.pk settlement.pk %}" download>Ajouter à mon calendrier (.ics)</a>
+        </p>
+        <p>
+            <label for="plan-progress">Payé : {{ plan.paid_amount }} / {{ plan.total_amount }} {{ group.currency }}</label>
+            <progress id="plan-progress" max="{{ plan.total_amount|stringformat:'s' }}" value="{{ plan.paid_amount|stringformat:'s' }}">
+                {{ plan.paid_amount }} / {{ plan.total_amount }}
+            </progress>
+        </p>
+        <table class="data-table">
+            <caption class="visually-hidden">Échéances</caption>
+            <thead>
+                <tr>
+                    <th scope="col">N°</th>
+                    <th scope="col">Échéance</th>
+                    <th scope="col" class="num">Montant</th>
+                    <th scope="col" class="num">Payé</th>
+                    <th scope="col">Statut</th>
+                    {% if is_payer and settlement.is_pending %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for inst in installments %}
+                    <tr>
+                        <td>{{ inst.number }}</td>
+                        <td>{{ inst.due_date|date:"d/m/Y" }}{% if inst.is_late %} <span class="status status-ko">en retard de {{ inst.days_late }} j</span>{% endif %}</td>
+                        <td class="num">{{ inst.amount }}</td>
+                        <td class="num">{{ inst.paid_amount }}</td>
+                        <td>{{ inst.get_status_display }}{% if inst.paid_at %} <span class="muted">le {{ inst.paid_at|date:"d/m/Y" }}</span>{% endif %}</td>
+                        {% if is_payer and settlement.is_pending %}
+                            <td>
+                                {% if inst.status != "paid" and plan.status == "active" %}
+                                    <a href="{% url 'settlements:installment_pay' group.pk inst.pk %}">Payer<span class="visually-hidden"> l'échéance {{ inst.number }}</span></a>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty">Pas d'échéancier : le montant est remboursé en une fois.</p>
+        {% if settlement.is_pending %}
+            <p><a href="{% url 'settlements:simulate' group.pk settlement.pk %}"><span class="ai-badge">IA</span> Simuler le risque d'un échéancier avant de le créer</a></p>
+        {% endif %}
+    {% endif %}
+</section>
+
+{% if plan %}
+<section class="section card risk-card" aria-labelledby="risk-title">
+    <div class="section-header">
+        <h2 id="risk-title"><span class="ai-badge">IA</span> Risque de retard</h2>
+        <div class="actions">
+            <a class="btn btn-inline btn-primary" href="{% url 'settlements:simulate' group.pk settlement.pk %}">Ouvrir le simulateur</a>
+            {% if can_predict %}
+                <form method="post" action="{% url 'settlements:risk' group.pk settlement.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-inline">Recalculer</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    {% if prediction %}
+        <p class="risk-value risk-{{ prediction.label }}">
+            {{ prediction.get_label_display }} : {{ prediction.percent }} % de probabilité qu'une échéance soit payée avec plus de 3 jours de retard
+        </p>
+        <p>
+            <label for="risk-meter" class="visually-hidden">Probabilité de retard</label>
+            <meter id="risk-meter" min="0" max="100" low="35" high="50" optimum="0" value="{{ prediction.percent }}">{{ prediction.percent }} %</meter>
+        </p>
+        {% if explanation %}
+            <h3 class="explain-title">Pourquoi ce score ?</h3>
+            <p class="muted">Effet de chaque variable par rapport à un remboursement moyen (coefficient du modèle × valeur standardisée).</p>
+            <ul class="explain-list">
+                {% for item in explanation %}
+                    <li>
+                        <span class="explain-label">{{ item.label }} <span class="muted">({{ item.value }})</span></span>
+                        <span class="explain-bar {% if item.raises %}explain-up{% else %}explain-down{% endif %}" style="--share: {{ item.share }}%" aria-hidden="true"></span>
+                        <span class="explain-effect">{% if item.raises %}▲ augmente{% else %}▼ diminue{% endif %} le risque</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <p class="muted">
+            Régression logistique, seuil 0,5 · modèle {{ prediction.model_version }} entraîné sur un jeu de démonstration généré
+            · calculé en {{ prediction.latency_ms }} ms le {{ prediction.created_at|date:"d/m/Y H:i" }}.
+        </p>
+    {% else %}
+        <p class="empty">Aucune prédiction : le modèle n'était pas disponible. Réessayez avec « Recalculer ».</p>
+    {% endif %}
+</section>
+{% endif %}
+
+{% if is_receiver and settlement.is_pending %}
+<section class="section card" aria-labelledby="reminder-title">
+    <h2 id="reminder-title"><span class="ai-badge">IA</span> Relancer le payeur</h2>
+    <p class="muted">Le message est rédigé par l'IA dans le ton choisi ; un modèle de texte prend le relais si l'IA est indisponible. Vous pouvez le modifier avant l'envoi.</p>
+    <form id="reminder-generate" class="inline-form" method="post" action="{% url 'settlements:reminder' group.pk settlement.pk %}">
+        {% csrf_token %}
+        <div class="field">
+            <label for="{{ reminder_form.tone.id_for_label }}">{{ reminder_form.tone.label }}</label>
+            {{ reminder_form.tone }}
+        </div>
+        <button type="submit" class="btn btn-inline btn-ai" id="reminder-btn">
+            <span class="btn-text">Rédiger la relance</span>
+            <span class="spinner" hidden aria-hidden="true"></span>
+        </button>
+    </form>
+    <p id="reminder-status" class="muted" role="status" aria-live="polite"></p>
+    <form method="post" action="{% url 'settlements:reminder_send' group.pk settlement.pk %}" id="reminder-send" hidden>
+        {% csrf_token %}
+        <div class="field">
+            <label for="reminder-message">Message</label>
+            <textarea id="reminder-message" name="message" class="input" rows="4" maxlength="600" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-inline">Envoyer au payeur</button>
+    </form>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if is_receiver and settlement.is_pending %}
+<script>
+(() => {
+    const form = document.getElementById("reminder-generate");
+    const button = document.getElementById("reminder-btn");
+    const status = document.getElementById("reminder-status");
+    const sendForm = document.getElementById("reminder-send");
+    const message = document.getElementById("reminder-message");
+
+    function setLoading(loading) {
+        button.disabled = loading;
+        button.setAttribute("aria-busy", loading ? "true" : "false");
+        button.querySelector(".spinner").hidden = !loading;
+        button.querySelector(".btn-text").textContent = loading ? "Rédaction en cours…" : "Rédiger la relance";
+    }
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setLoading(true);
+        status.textContent = "Rédaction en cours…";
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-CSRFToken": window.finova.getCsrfToken() },
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erreur serveur.");
+            message.value = data.message;
+            sendForm.hidden = false;
+            const source = data.source === "llm" ? "rédigé par l'IA" : "modèle de texte (IA indisponible)";
+            status.textContent = `Message ${source} en ${data.latency_ms} ms. Relisez-le avant l'envoi.`;
+            message.focus();
+        } catch (error) {
+            status.textContent = `Impossible de rédiger la relance : ${error.message}`;
+        } finally {
+            setLoading(false);
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

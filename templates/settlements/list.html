@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Remboursements · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+{% include "settlements/_nav.html" %}
+<div class="page-header">
+    <div>
+        <h1>Remboursements</h1>
+        {% if to_confirm %}
+            <p><strong>{{ to_confirm }}</strong> remboursement{{ to_confirm|pluralize }} attend{{ to_confirm|pluralize:"ent" }} votre confirmation.</p>
+        {% endif %}
+    </div>
+    <p class="actions">
+        <a class="btn btn-primary btn-inline" href="{% url 'settlements:create' group.pk %}">Déclarer un remboursement</a>
+    </p>
+</div>
+
+<form method="get" class="filter-form" aria-label="Filtrer par statut">
+    <div class="field">
+        <label for="status">Statut</label>
+        <select id="status" name="status" class="input">
+            <option value="">Tous</option>
+            {% for value, label in statuses %}
+                <option value="{{ value }}" {% if value == current_status %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-inline">Filtrer</button>
+</form>
+
+{% if settlements %}
+    <table class="data-table">
+        <caption class="visually-hidden">Remboursements du groupe</caption>
+        <thead>
+            <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Payeur</th>
+                <th scope="col">Bénéficiaire</th>
+                <th scope="col" class="num">Montant</th>
+                <th scope="col">Statut</th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in settlements %}
+                <tr>
+                    <td>{{ s.created_at|date:"d/m/Y" }}</td>
+                    <td>{{ s.payer.user.get_full_name|default:s.payer.user.username }}</td>
+                    <td>{{ s.receiver.user.get_full_name|default:s.receiver.user.username }}</td>
+                    <td class="num">{{ s.amount }} {{ group.currency }}</td>
+                    <td>{% include "settlements/_status.html" with settlement=s %}</td>
+                    <td><a href="{% url 'settlements:detail' group.pk s.pk %}">Détail<span class="visually-hidden"> du remboursement du {{ s.created_at|date:"d/m/Y" }}</span></a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if is_paginated %}
+        <nav class="pagination" aria-label="Pagination">
+            {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if current_status %}&amp;status={{ current_status }}{% endif %}">Précédent</a>{% endif %}
+            <span>Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if current_status %}&amp;status={{ current_status }}{% endif %}">Suivant</a>{% endif %}
+        </nav>
+    {% endif %}
+{% else %}
+    <p class="empty">Aucun remboursement{% if current_status %} avec ce statut{% endif %}.</p>
+{% endif %}
+{% endblock %}

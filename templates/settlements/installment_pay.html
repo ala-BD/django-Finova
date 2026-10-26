@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Payer l'échéance {{ installment.number }} · Finova{% endblock %}
+{% block content %}
+<article class="auth-card">
+    <h1>Payer l'échéance {{ installment.number }}</h1>
+    <p>
+        Échéance du {{ installment.due_date|date:"d/m/Y" }} :
+        {{ installment.amount }} {{ group.currency }}, déjà payé {{ installment.paid_amount }},
+        reste <strong>{{ installment.remaining }} {{ group.currency }}</strong>.
+    </p>
+    {% include "includes/form_errors.html" with form=form %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.amount %}
+        <button type="submit" class="btn btn-primary">Enregistrer le paiement</button>
+    </form>
+    <p class="auth-alt"><a href="{% url 'settlements:detail' group.pk installment.plan.settlement_id %}">Annuler</a></p>
+</article>
+{% endblock %}

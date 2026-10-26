@@ -1,0 +1,7 @@
+{% if settlement.status == "confirmed" %}
+    <span class="status status-ok">✓ {{ settlement.get_status_display }}</span>
+{% elif settlement.status == "rejected" %}
+    <span class="status status-ko">✗ {{ settlement.get_status_display }}</span>
+{% else %}
+    <span class="status status-wait">… {{ settlement.get_status_display }}</span>
+{% endif %}

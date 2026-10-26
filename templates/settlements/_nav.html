@@ -1,0 +1,8 @@
+<nav class="sub-nav" aria-label="Soldes et remboursements">
+    <ul>
+        <li><a href="{% url 'groups:detail' group.pk %}">← {{ group.name }}</a></li>
+        <li><a href="{% url 'settlements:balances' group.pk %}" {% if request.resolver_match.url_name == 'balances' %}aria-current="page"{% endif %}>Soldes</a></li>
+        <li><a href="{% url 'settlements:list' group.pk %}" {% if request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>Remboursements</a></li>
+        <li><a href="{% url 'settlements:create' group.pk %}" {% if request.resolver_match.url_name == 'create' %}aria-current="page"{% endif %}>Déclarer un remboursement</a></li>
+    </ul>
+</nav>

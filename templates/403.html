@@ -1,6 +1,9 @@
-{% extends "base.html" %}
-{% block title %}Accès refusé{% endblock %}
-{% block content %}
-<h1>403 — Accès refusé</h1>
-<p>Vous n'avez pas le droit d'accéder à cette page.</p>
+{% extends "_error.html" %}
+{% block error_title %}Accès refusé{% endblock %}
+{% block error_code %}403{% endblock %}
+{% block error_heading %}Accès refusé{% endblock %}
+{% block error_body %}
+<p>Vous n'avez pas le droit d'effectuer cette action ou de consulter cette page.</p>
+<p>Les données d'un groupe sont réservées à ses membres, et certaines actions à un rôle précis
+   (par exemple, seul le bénéficiaire peut confirmer un remboursement).</p>
 {% endblock %}

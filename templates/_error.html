@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% comment %}Gabarit commun des pages d'erreur 400/403/404 (Imem).{% endcomment %}
+{% block title %}{% block error_title %}{% endblock %} · Finova{% endblock %}
+{% block content %}
+<article class="error-page" aria-labelledby="error-title">
+    <p class="error-code" aria-hidden="true">{% block error_code %}{% endblock %}</p>
+    <h1 id="error-title">{% block error_heading %}{% endblock %}</h1>
+    {% block error_body %}{% endblock %}
+    <ul class="error-links">
+        <li><a class="btn btn-primary btn-inline" href="{% url 'home' %}">Retour à l'accueil</a></li>
+        {% if user.is_authenticated %}
+            <li><a class="btn btn-inline" href="{% url 'groups:list' %}">Mes groupes</a></li>
+        {% else %}
+            <li><a class="btn btn-inline" href="{% url 'accounts:login' %}">Se connecter</a></li>
+        {% endif %}
+    </ul>
+</article>
+{% endblock %}

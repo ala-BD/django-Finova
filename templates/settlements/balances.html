@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Soldes · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+{% include "settlements/_nav.html" %}
+<div class="page-header">
+    <div>
+        <h1>Soldes du groupe</h1>
+        <p>Solde net = payé − dû + remboursements confirmés. Montants en {{ group.currency }}.</p>
+    </div>
+</div>
+
+{% if not expenses_integrated %}
+    <p class="message message-info">
+        Le module Dépenses (M2) n'est pas encore branché : les soldes ne tiennent compte
+        que des remboursements confirmés.
+    </p>
+{% endif %}
+
+<section>
+    <h2>Solde de chaque membre</h2>
+    <figure class="chart-box">
+        <div class="chart-canvas">
+            <canvas id="balances-chart" role="img"
+                    aria-label="Graphique des soldes : barres vertes pour les créanciers, rouges pour les débiteurs. Les mêmes valeurs figurent dans le tableau ci-dessous."></canvas>
+        </div>
+        <figcaption class="muted">À droite de zéro, on doit de l'argent au membre ; à gauche, il en doit. Détail chiffré dans le tableau.</figcaption>
+    </figure>
+    {{ chart_data|json_script:"balances-data" }}
+    <table class="data-table">
+        <caption class="visually-hidden">Solde net par membre</caption>
+        <thead>
+            <tr>
+                <th scope="col">Membre</th>
+                <th scope="col" class="num">Solde</th>
+                <th scope="col">Situation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr{% if row.membership.pk == me.pk %} class="row-me"{% endif %}>
+                    <td>
+                        {{ row.membership.user.get_full_name|default:row.membership.user.username }}
+                        {% if row.membership.pk == me.pk %}<span class="muted">(vous)</span>{% endif %}
+                    </td>
+                    <td class="num">{{ row.balance }}</td>
+                    <td>
+                        {% if row.balance > 0 %}
+                            <span class="status status-ok">Créancier : on lui doit {{ row.magnitude }}</span>
+                        {% elif row.balance < 0 %}
+                            <span class="status status-ko">Débiteur : doit {{ row.magnitude }}</span>
+                        {% else %}
+                            <span class="status">À l'équilibre</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="section" aria-labelledby="graph-title">
+    <h2 id="graph-title">Qui doit à qui ? Graphe interactif</h2>
+    <div class="graph-toolbar" role="radiogroup" aria-label="Affichage du graphe">
+        <label><input type="radio" name="graph-mode" value="before"> Dettes brutes <span class="muted" id="graph-count-before"></span></label>
+        <label><input type="radio" name="graph-mode" value="after" checked> Après simplification <span class="muted" id="graph-count-after"></span></label>
+    </div>
+    <p id="graph-summary" class="muted" aria-live="polite"></p>
+    <div class="graph-layout">
+        <svg id="debt-graph" class="debt-graph" viewBox="0 0 600 440" role="group"
+             aria-label="Graphe des dettes entre membres. Utilisez Tab pour parcourir les membres et Entrée pour voir leur détail."></svg>
+        <aside class="card graph-details" id="graph-details" aria-live="polite">
+            <p class="muted">Cliquez sur un membre (ou Tab puis Entrée) pour voir ce qu'il doit et ce qu'on lui doit.</p>
+        </aside>
+    </div>
+    <details class="graph-text">
+        <summary>Version texte du graphe</summary>
+        <ul id="graph-list"></ul>
+    </details>
+    {{ graph_data|json_script:"graph-data" }}
+</section>
+
+<section class="section">
+    <h2>Virements simplifiés</h2>
+    {% if transfers %}
+        <p>{{ transfers|length }} virement{{ transfers|length|pluralize }} suffi{{ transfers|length|pluralize:"t,sent" }} pour tout solder (au plus n − 1 pour n membres).</p>
+        <ol class="transfer-list">
+            {% for t in transfers %}
+                <li class="card transfer">
+                    <span>
+                        <strong>{{ t.debtor.user.get_full_name|default:t.debtor.user.username }}</strong>
+                        verse
+                        <strong>{{ t.amount }} {{ group.currency }}</strong>
+                        à
+                        <strong>{{ t.creditor.user.get_full_name|default:t.creditor.user.username }}</strong>
+                    </span>
+                    {% if t.debtor.pk == me.pk %}
+                        <a class="btn btn-primary btn-inline" href="{% url 'settlements:create' group.pk %}?receiver={{ t.creditor.pk }}&amp;amount={{ t.amount|stringformat:'s' }}">Rembourser</a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <p class="empty">Tout le monde est à l'équilibre : aucun virement nécessaire.</p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/m3_debt_graph.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+    const canvas = document.getElementById("balances-chart");
+    if (!window.Chart) {  // CDN injoignable : le tableau reste disponible
+        canvas.closest("figure").hidden = true;
+        return;
+    }
+    const data = JSON.parse(document.getElementById("balances-data").textContent);
+    const css = getComputedStyle(document.documentElement);
+    const green = css.getPropertyValue("--ok").trim() || "#14532d";
+    const red = css.getPropertyValue("--error").trim() || "#991b1b";
+    const format = (v) => `${v.toLocaleString("fr-FR", { minimumFractionDigits: 3 })} ${data.currency}`;
+    canvas.closest(".chart-canvas").style.height =`${Math.max(140, data.labels.length * 48)}px`;
+    new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.values,
+                backgroundColor: data.values.map((v) => (v >= 0 ? green : red)),
+                borderRadius: 4,
+            }],
+        },
+        options: {
+            indexAxis: "y",
+            maintainAspectRatio: false,
+            animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : undefined,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => (ctx.raw >= 0 ? "Créancier : " : "Débiteur : ") + format(Math.abs(ctx.raw)) } },
+            },
+            scales: { x: { ticks: { callback: (v) => `${v} ${data.currency}` } } },
+        },
+    });
+})();
+</script>
+{% endblock %}

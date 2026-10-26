@@ -1,7 +1,13 @@
+{% comment %}
+Messages flash (Imem). Les erreurs sont annoncées immédiatement (role="alert"),
+les autres messages poliment (aria-live="polite"). Le libellé ne repose pas que sur la couleur.
+{% endcomment %}
 {% if messages %}
     <ul class="messages" aria-live="polite" aria-atomic="true">
         {% for message in messages %}
-            <li class="message message-{{ message.tags|default:'info' }}">{{ message }}</li>
+            <li class="message message-{{ message.tags|default:'info' }}"{% if message.level_tag == 'error' %} role="alert"{% endif %}>
+                <span class="visually-hidden">{% if message.level_tag == 'error' %}Erreur : {% elif message.level_tag == 'warning' %}Attention : {% elif message.level_tag == 'success' %}Succès : {% else %}Information : {% endif %}</span>{{ message }}
+            </li>
         {% endfor %}
     </ul>
 {% endif %}

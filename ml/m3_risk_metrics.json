@@ -1,0 +1,44 @@
+{
+  "version": "logreg-20261026",
+  "dataset": {
+    "rows": 600,
+    "train": 480,
+    "test": 120,
+    "late_rate": 0.347,
+    "generated": true
+  },
+  "threshold": 0.5,
+  "model": {
+    "accuracy": 0.792,
+    "precision": 0.689,
+    "recall": 0.738,
+    "f1": 0.713,
+    "confusion_matrix": {
+      "tn": 64,
+      "fp": 14,
+      "fn": 11,
+      "tp": 31
+    }
+  },
+  "baseline_never_late": {
+    "accuracy": 0.65,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "confusion_matrix": {
+      "tn": 78,
+      "fp": 0,
+      "fn": 42,
+      "tp": 0
+    }
+  },
+  "prediction_latency_ms": 0.533,
+  "standardized_coefficients": {
+    "amount": 0.347,
+    "installments_count": 0.411,
+    "past_late_count": 1.267,
+    "avg_confirmation_delay_days": 1.086,
+    "amount_weight_ratio": 0.425,
+    "days_since_creation": -0.509
+  }
+}
