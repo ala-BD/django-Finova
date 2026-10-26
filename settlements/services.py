@@ -9,6 +9,7 @@ import time
 from decimal import Decimal
 
 from django.apps import apps
+from django.conf import settings
 from django.core.exceptions import FieldError, PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Sum
@@ -273,6 +274,64 @@ def predict_risk(plan):
         features=features,
         latency_ms=latency_ms,
     )
+
+
+DEFAULT_PLAN = {"installments_count": 3, "frequency": RepaymentPlan.Frequency.MONTHLY}
+
+
+def suggest_plans(settlement, monthly_capacity, limit=3):
+    """IA : évalue tous les échéanciers abordables avec le modèle de risque et propose les
+    moins risqués, comparés à l'échéancier par défaut (3 mensualités)."""
+    started = time.perf_counter()
+    base = risk.settlement_features(settlement)
+    ranked = risk.rank_plans(base, float(monthly_capacity))
+    labels = dict(RepaymentPlan.Frequency.choices)
+    for candidate in ranked:
+        candidate["frequency_label"] = labels[candidate["frequency"]]
+        candidate["percent"] = round(candidate["probability"] * 100)
+    default_probability = risk.rank_plans(base, float("inf"))
+    default = next(
+        c for c in default_probability
+        if c["installments_count"] == DEFAULT_PLAN["installments_count"]
+        and c["frequency"] == DEFAULT_PLAN["frequency"]
+    )
+    return {
+        "candidates": ranked[:limit],
+        "feasible_count": len(ranked),
+        "default_percent": round(default["probability"] * 100),
+        "latency_ms": int((time.perf_counter() - started) * 1000),
+    }
+
+
+def explain_prediction(prediction):
+    """Contributions des variables à une prédiction enregistrée ; [] si le modèle manque."""
+    try:
+        return risk.explain(prediction.features)
+    except (risk.RiskModelUnavailable, KeyError):
+        return []
+
+
+def parse_repayment_sentence(group, payer, text, user=None):
+    """Langage naturel → champs du formulaire de remboursement (bénéficiaire = Membership)."""
+    from . import nlp
+
+    candidates = group.active_memberships().exclude(pk=payer.pk)
+    members = [
+        (m.pk, [n for n in (m.user.first_name, m.user.last_name, m.user.username,
+                            m.user.get_full_name()) if n])
+        for m in candidates
+    ]
+    result = nlp.parse_repayment(text, members, user=user, use_llm=bool(settings.LLM_API_KEY))
+    labels = {m.pk: (m.user.get_full_name() or m.user.username) for m in candidates}
+    return {
+        "receiver": result["receiver"],
+        "receiver_label": labels.get(result["receiver"], ""),
+        "amount": str(result["amount"]) if result["amount"] is not None else None,
+        "note": result["note"],
+        "source": result["source"],
+        "missing": result["missing"],
+        "latency_ms": result["latency_ms"],
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -10,6 +10,25 @@
         → {{ settlement.receiver.user.get_full_name|default:settlement.receiver.user.username }}).
         {% if editing %}Les échéances seront recalculées.{% endif %}
     </p>
+    <section class="ai-box" aria-labelledby="suggest-title">
+        <h2 id="suggest-title"><span class="ai-badge">IA</span> Suggérer l'échéancier le plus sûr</h2>
+        <p class="muted">L'IA teste tous les échéanciers possibles (2 à 12 échéances, chaque fréquence) avec le
+           modèle de risque de retard, et garde ceux que le payeur peut assumer chaque mois.</p>
+        <form id="suggest-form" class="inline-form" method="post" action="{% url 'settlements:plan_suggest' group.pk settlement.pk %}">
+            {% csrf_token %}
+            <div class="field">
+                <label for="capacity">Le payeur peut verser au maximum ({{ group.currency }} / mois)</label>
+                <input id="capacity" name="capacity" type="number" min="0.001" step="0.001" class="input" inputmode="decimal" required>
+            </div>
+            <button type="submit" class="btn btn-inline btn-ai" id="suggest-btn">
+                <span class="btn-text">Suggérer</span>
+                <span class="spinner" hidden aria-hidden="true"></span>
+            </button>
+        </form>
+        <p id="suggest-status" class="muted" role="status" aria-live="polite"></p>
+        <ol id="suggest-list" class="suggest-list"></ol>
+    </section>
+
     {% include "includes/form_errors.html" with form=form %}
     <form method="post" novalidate>
         {% csrf_token %}
@@ -20,4 +39,72 @@
     </form>
     <p class="auth-alt"><a href="{% url 'settlements:detail' group.pk settlement.pk %}">Annuler</a></p>
 </article>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const form = document.getElementById("suggest-form");
+    const button = document.getElementById("suggest-btn");
+    const status = document.getElementById("suggest-status");
+    const list = document.getElementById("suggest-list");
+    const currency = "{{ group.currency|escapejs }}";
+    const money = (value) => Number(value).toLocaleString("fr-FR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+    function setLoading(loading) {
+        button.disabled = loading;
+        button.setAttribute("aria-busy", loading ? "true" : "false");
+        button.querySelector(".spinner").hidden = !loading;
+    }
+
+    function apply(candidate) {
+        document.getElementById("id_installments_count").value = candidate.installments_count;
+        document.getElementById("id_frequency").value = candidate.frequency;
+        status.textContent = `Échéancier appliqué : ${candidate.installments_count} échéances, ${candidate.frequency_label.toLowerCase()}. Choisissez la première date puis enregistrez.`;
+        document.getElementById("id_start_date").focus();
+    }
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setLoading(true);
+        list.replaceChildren();
+        status.textContent = "Calcul en cours…";
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-CSRFToken": window.finova.getCsrfToken() },
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erreur serveur.");
+            if (!data.candidates.length) {
+                status.textContent = "Aucun échéancier de 12 échéances maximum ne respecte ce budget mensuel : augmentez-le.";
+                return;
+            }
+            status.textContent = `${data.feasible_count} échéanciers abordables évalués en ${data.latency_ms} ms. ` +
+                `Risque avec l'échéancier par défaut (3 mensualités) : ${data.default_percent} %.`;
+            data.candidates.forEach((c, index) => {
+                const item = document.createElement("li");
+                item.className = "card suggestion";
+                const text = document.createElement("span");
+                text.innerHTML = `<strong>${c.installments_count} × ${money(c.installment_amount)} ${currency}</strong> ` +
+                    `(${c.frequency_label.toLowerCase()}, ${money(c.monthly_load)} ${currency}/mois) — ` +
+                    `risque <strong>${c.percent} %</strong>${index === 0 ? " · recommandé" : ""}`;
+                const use = document.createElement("button");
+                use.type = "button";
+                use.className = "btn btn-inline";
+                use.textContent = "Utiliser";
+                use.setAttribute("aria-label", `Utiliser ${c.installments_count} échéances ${c.frequency_label.toLowerCase()}`);
+                use.addEventListener("click", () => apply(c));
+                item.append(text, use);
+                list.append(item);
+            });
+        } catch (error) {
+            status.textContent = `Suggestion impossible : ${error.message}`;
+        } finally {
+            setLoading(false);
+        }
+    });
+})();
+</script>
 {% endblock %}

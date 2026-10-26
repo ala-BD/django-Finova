@@ -2,7 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
@@ -11,7 +11,7 @@ from django.views.generic import ListView, TemplateView
 from core.permissions import GroupMemberRequiredMixin
 from groups.services import is_admin
 
-from . import services
+from . import exports, services
 from .forms import (
     InstallmentPaymentForm,
     ReminderForm,
@@ -49,8 +49,17 @@ class BalancesView(GroupSettlementMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         group = self.get_group()
-        context.update(services.balance_overview(group))
+        overview = services.balance_overview(group)
+        context.update(overview)
         context["group"] = group
+        context["chart_data"] = {
+            "labels": [
+                row["membership"].user.get_full_name() or row["membership"].user.username
+                for row in overview["rows"]
+            ],
+            "values": [float(row["balance"]) for row in overview["rows"]],
+            "currency": group.currency,
+        }
         context["me"] = self.get_membership()
         return context
 
@@ -146,6 +155,9 @@ class SettlementDetailView(GroupSettlementMixin, View):
             ),
             "reminder_form": ReminderForm(),
         }
+        context["explanation"] = (
+            services.explain_prediction(context["prediction"]) if context["prediction"] else []
+        )
         context["can_confirm"] = context["is_receiver"] and settlement.is_pending and (
             plan is None or plan.status != RepaymentPlan.Status.ACTIVE
         )
@@ -317,6 +329,57 @@ class ReminderGenerateView(GroupSettlementMixin, View):
         if not form.is_valid():
             return JsonResponse({"error": "Ton invalide."}, status=400)
         return JsonResponse(services.generate_reminder(settlement, form.cleaned_data["tone"], user=request.user))
+
+
+class SettlementParseView(GroupSettlementMixin, View):
+    """IA : phrase en langage naturel → champs du formulaire (JSON, appelé en fetch)."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, gid):
+        text = (request.POST.get("text") or "").strip()
+        if not text or len(text) > 500:
+            return JsonResponse({"error": "Décrivez le remboursement en une phrase (500 caractères max)."}, status=400)
+        result = services.parse_repayment_sentence(self.get_group(), self.get_membership(), text, user=request.user)
+        return JsonResponse(result)
+
+
+class PlanSuggestView(GroupSettlementMixin, View):
+    """IA : propose les échéanciers abordables les moins risqués (JSON, appelé en fetch)."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, gid, sid):
+        settlement = self.get_settlement()
+        if not services.can_manage_plan(settlement, request.user):
+            return JsonResponse({"error": "Action non autorisée."}, status=403)
+        try:
+            capacity = Decimal(request.POST.get("capacity", "").replace(",", "."))
+        except InvalidOperation:
+            capacity = Decimal("0")
+        if capacity <= 0:
+            return JsonResponse({"error": "Indiquez un montant mensuel strictement positif."}, status=400)
+        try:
+            return JsonResponse(services.suggest_plans(settlement, capacity))
+        except services.risk.RiskModelUnavailable as exc:
+            return JsonResponse({"error": str(exc)}, status=503)
+
+
+class PlanExportView(GroupSettlementMixin, View):
+    """Téléchargement de l'échéancier en PDF ou en calendrier .ics (membres du groupe)."""
+
+    fmt = "pdf"
+
+    def get(self, request, gid, sid):
+        plan = get_object_or_404(RepaymentPlan, settlement=self.get_settlement())
+        filename = f"echeancier-{plan.settlement.group_id}-{plan.settlement_id}"
+        if self.fmt == "ics":
+            response = HttpResponse(exports.plan_ics(plan, host=request.get_host()), content_type="text/calendar; charset=utf-8")
+            response["Content-Disposition"] = f'attachment; filename="{filename}.ics"'
+        else:
+            response = HttpResponse(exports.plan_pdf(plan), content_type="application/pdf")
+            response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+        return response
 
 
 class ReminderSendView(GroupSettlementMixin, View):

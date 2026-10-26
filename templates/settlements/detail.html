@@ -63,6 +63,10 @@
             {{ plan.installments_count }} échéances, {{ plan.get_frequency_display|lower }},
             à partir du {{ plan.start_date|date:"d/m/Y" }} — {{ plan.get_status_display|lower }}.
         </p>
+        <p class="actions">
+            <a class="btn btn-inline" href="{% url 'settlements:plan_pdf' group.pk settlement.pk %}" download>Télécharger le PDF</a>
+            <a class="btn btn-inline" href="{% url 'settlements:plan_ics' group.pk settlement.pk %}" download>Ajouter à mon calendrier (.ics)</a>
+        </p>
         <p>
             <label for="plan-progress">Payé : {{ plan.paid_amount }} / {{ plan.total_amount }} {{ group.currency }}</label>
             <progress id="plan-progress" max="{{ plan.total_amount|stringformat:'s' }}" value="{{ plan.paid_amount|stringformat:'s' }}">
@@ -124,17 +128,19 @@
             <label for="risk-meter" class="visually-hidden">Probabilité de retard</label>
             <meter id="risk-meter" min="0" max="100" low="35" high="50" optimum="0" value="{{ prediction.percent }}">{{ prediction.percent }} %</meter>
         </p>
-        <details>
-            <summary>Variables utilisées</summary>
-            <dl class="features">
-                <dt>Montant</dt><dd>{{ prediction.features.amount }}</dd>
-                <dt>Nombre d'échéances</dt><dd>{{ prediction.features.installments_count }}</dd>
-                <dt>Retards passés du payeur</dt><dd>{{ prediction.features.past_late_count }}</dd>
-                <dt>Délai moyen de confirmation (j)</dt><dd>{{ prediction.features.avg_confirmation_delay_days }}</dd>
-                <dt>Montant / poids d'équité</dt><dd>{{ prediction.features.amount_weight_ratio }}</dd>
-                <dt>Jours depuis la création</dt><dd>{{ prediction.features.days_since_creation }}</dd>
-            </dl>
-        </details>
+        {% if explanation %}
+            <h3 class="explain-title">Pourquoi ce score ?</h3>
+            <p class="muted">Effet de chaque variable par rapport à un remboursement moyen (coefficient du modèle × valeur standardisée).</p>
+            <ul class="explain-list">
+                {% for item in explanation %}
+                    <li>
+                        <span class="explain-label">{{ item.label }} <span class="muted">({{ item.value }})</span></span>
+                        <span class="explain-bar {% if item.raises %}explain-up{% else %}explain-down{% endif %}" style="--share: {{ item.share }}%" aria-hidden="true"></span>
+                        <span class="explain-effect">{% if item.raises %}▲ augmente{% else %}▼ diminue{% endif %} le risque</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
         <p class="muted">
             Régression logistique, seuil 0,5 · modèle {{ prediction.model_version }} entraîné sur un jeu de démonstration généré
             · calculé en {{ prediction.latency_ms }} ms le {{ prediction.created_at|date:"d/m/Y H:i" }}.
