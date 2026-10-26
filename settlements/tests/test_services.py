@@ -81,6 +81,19 @@ class ComputeBalancesTests(SettlementFixturesMixin, TestCase):
         transfer = overview["transfers"][0]
         self.assertEqual((transfer["debtor"], transfer["creditor"]), (self.m_linda, self.m_ala))
 
+    def test_member_balance_summary_is_about_the_user_only(self):
+        self.settlement(amount="30", status=Settlement.Status.CONFIRMED)  # Yahya → Ala : Ala doit 30
+        summary = services.member_balance_summary(self.group, self.ala)
+        self.assertEqual(summary["solde"], "-30.000")
+        self.assertEqual(summary["situation"], "débiteur")
+        self.assertEqual(summary["je_dois"], [{"à": "Yahya", "montant": "30.000"}])
+        self.assertEqual(summary["on_me_doit"], [])
+        # Aucun identifiant interne envoyé au LLM : uniquement des chaînes et des listes de chaînes
+        self.assertEqual(set(summary), {"groupe", "devise", "solde", "situation", "je_dois", "on_me_doit"})
+        self.assertTrue(all(isinstance(v, (str, list)) for v in summary.values()))
+        self.assertEqual(services.member_balance_summary(self.group, self.yahya)["on_me_doit"],
+                         [{"de": "Ala", "montant": "30.000"}])
+
     def test_balances_rounded_to_the_millime(self):
         # SQLite renvoie les sommes M2 avec des décimales parasites
         flows = ({self.ala.pk: D("1277.370000000000")}, {self.yahya.pk: D("1277.3699999999")})
