@@ -106,6 +106,9 @@
         </table>
     {% else %}
         <p class="empty">Pas d'échéancier : le montant est remboursé en une fois.</p>
+        {% if settlement.is_pending %}
+            <p><a href="{% url 'settlements:simulate' group.pk settlement.pk %}"><span class="ai-badge">IA</span> Simuler le risque d'un échéancier avant de le créer</a></p>
+        {% endif %}
     {% endif %}
 </section>
 
@@ -113,12 +116,15 @@
 <section class="section card risk-card" aria-labelledby="risk-title">
     <div class="section-header">
         <h2 id="risk-title"><span class="ai-badge">IA</span> Risque de retard</h2>
-        {% if can_predict %}
-            <form method="post" action="{% url 'settlements:risk' group.pk settlement.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-inline">Recalculer</button>
-            </form>
-        {% endif %}
+        <div class="actions">
+            <a class="btn btn-inline btn-primary" href="{% url 'settlements:simulate' group.pk settlement.pk %}">Ouvrir le simulateur</a>
+            {% if can_predict %}
+                <form method="post" action="{% url 'settlements:risk' group.pk settlement.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-inline">Recalculer</button>
+                </form>
+            {% endif %}
+        </div>
     </div>
     {% if prediction %}
         <p class="risk-value risk-{{ prediction.label }}">

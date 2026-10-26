@@ -32,6 +32,7 @@ urlpatterns = [
     path("settlements/<int:sid>/plan/pdf/", views.PlanExportView.as_view(fmt="pdf"), name="plan_pdf"),
     path("settlements/<int:sid>/plan/ics/", views.PlanExportView.as_view(fmt="ics"), name="plan_ics"),
     path("settlements/<int:sid>/risk/", views.RiskPredictView.as_view(), name="risk"),
+    path("settlements/<int:sid>/simulate/", views.RiskSimulatorView.as_view(), name="simulate"),
     path("settlements/<int:sid>/reminder/", views.ReminderGenerateView.as_view(), name="reminder"),
     path(
         "settlements/<int:sid>/reminder/send/",

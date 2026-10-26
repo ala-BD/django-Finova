@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Simulateur de risque · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+{% include "settlements/_nav.html" %}
+<div class="page-header">
+    <div>
+        <p class="back"><a href="{% url 'settlements:detail' group.pk settlement.pk %}">← Retour au remboursement</a></p>
+        <h1><span class="ai-badge">IA</span> Simulateur de risque de retard</h1>
+        <p>
+            {{ settlement.payer.user.get_full_name|default:settlement.payer.user.username }}
+            → {{ settlement.receiver.user.get_full_name|default:settlement.receiver.user.username }} ·
+            {{ settlement.amount }} {{ group.currency }}.
+            Bougez les curseurs : le modèle recalcule le risque instantanément, dans votre navigateur.
+        </p>
+    </div>
+</div>
+
+<div class="simulator" id="simulator">
+    <form class="sim-controls" aria-label="Paramètres de la simulation" onsubmit="return false">
+        <fieldset>
+            <legend>L'échéancier (vos choix)</legend>
+            <div class="sim-field">
+                <label for="sim-count">Nombre d'échéances</label>
+                <input type="range" id="sim-count" min="2" max="12" step="1">
+                <output for="sim-count" id="sim-count-out"></output>
+            </div>
+            <div class="sim-field">
+                <span class="sim-label" id="sim-frequency-label">Fréquence</span>
+                <div class="sim-radios" role="radiogroup" aria-labelledby="sim-frequency-label">
+                    <label><input type="radio" name="sim-frequency" value="weekly"> Hebdomadaire</label>
+                    <label><input type="radio" name="sim-frequency" value="biweekly"> Toutes les 2 semaines</label>
+                    <label><input type="radio" name="sim-frequency" value="monthly"> Mensuelle</label>
+                </div>
+                <p class="help">La fréquence ne change pas le risque prédit, seulement l'effort mensuel.</p>
+            </div>
+            <div class="sim-field">
+                <label for="sim-amount">Montant à rembourser ({{ group.currency }})</label>
+                <input type="range" id="sim-amount" min="1" step="0.5">
+                <output for="sim-amount" id="sim-amount-out"></output>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Le profil du payeur (scénario)</legend>
+            <p class="help">Valeurs réellement observées au départ. Modifiez-les pour voir leur effet.</p>
+            <div class="sim-field">
+                <label for="sim-late">Retards passés (plus de 3 jours)</label>
+                <input type="range" id="sim-late" min="0" max="8" step="1">
+                <output for="sim-late" id="sim-late-out"></output>
+            </div>
+            <div class="sim-field">
+                <label for="sim-delay">Délai moyen de confirmation</label>
+                <input type="range" id="sim-delay" min="0" max="15" step="0.5">
+                <output for="sim-delay" id="sim-delay-out"></output>
+            </div>
+            <div class="sim-field">
+                <label for="sim-age">Ancienneté du remboursement</label>
+                <input type="range" id="sim-age" min="0" max="120" step="1">
+                <output for="sim-age" id="sim-age-out"></output>
+            </div>
+        </fieldset>
+        <p class="actions">
+            <button type="button" class="btn btn-inline" id="sim-reset">Revenir aux valeurs réelles</button>
+            {% if simulator.apply_url %}
+                <a class="btn btn-primary btn-inline" id="sim-apply" href="{{ simulator.apply_url }}">Appliquer cet échéancier</a>
+            {% endif %}
+        </p>
+    </form>
+
+    <section class="sim-result" aria-labelledby="sim-result-title">
+        <h2 id="sim-result-title" class="visually-hidden">Résultat de la simulation</h2>
+        <div class="gauge" id="sim-gauge" aria-hidden="true">
+            <span class="gauge-value" id="sim-percent">–</span>
+        </div>
+        <p class="sim-verdict" id="sim-verdict"></p>
+        <p class="muted" id="sim-delta"></p>
+        <p id="sim-load"></p>
+        <p class="visually-hidden" id="sim-live" aria-live="polite"></p>
+
+        <h3>Risque selon le nombre d'échéances</h3>
+        <svg class="sim-curve" id="sim-curve" viewBox="0 0 320 140" role="img"
+             aria-label="Courbe du risque selon le nombre d'échéances, de 2 à 12, avec le seuil de 50 %"></svg>
+
+        <h3>Pourquoi ce score ?</h3>
+        <ul class="explain-list" id="sim-explain"></ul>
+        <p class="muted small">
+            Modèle {{ simulator.params.version }} (régression logistique, seuil 50 %), entraîné sur un jeu
+            de démonstration généré. Même calcul que sur le serveur.
+        </p>
+    </section>
+</div>
+{{ simulator|json_script:"simulator-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/m3_simulator.js' %}"></script>
+{% endblock %}

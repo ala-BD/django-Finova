@@ -113,6 +113,64 @@ def _order(item):
     return (-amount, str(key))
 
 
+def pairwise_debts(group) -> dict:
+    """Dettes brutes entre deux personnes, AVANT simplification : {(débiteur, créancier): montant}.
+
+    - dépense (M2) : chaque participant doit sa part au payeur ;
+    - remboursement confirmé : le bénéficiaire « doit » ce montant au payeur.
+    Les dettes réciproques d'une même paire sont compensées. La somme des dettes d'un membre
+    est donc égale à son solde (testé)."""
+    raw: dict = {}
+
+    def add(debtor, creditor, amount):
+        if debtor != creditor and amount:
+            raw[(debtor, creditor)] = raw.get((debtor, creditor), ZERO) + Decimal(str(amount))
+
+    if expense_flows(group) is not None:
+        ExpenseShare = apps.get_model("expenses", "ExpenseShare")
+        for row in ExpenseShare.objects.filter(expense__group=group).values(
+            "member__user_id", "expense__payer__user_id", "amount_due"
+        ):
+            add(row["member__user_id"], row["expense__payer__user_id"], row["amount_due"])
+    for payer_id, receiver_id, amount in Settlement.objects.filter(
+        group=group, status=Settlement.Status.CONFIRMED
+    ).values_list("payer__user_id", "receiver__user_id", "amount"):
+        add(receiver_id, payer_id, amount)
+
+    net = {}
+    for (debtor, creditor), amount in raw.items():
+        difference = amount - raw.get((creditor, debtor), ZERO)
+        if difference > 0:
+            net[(debtor, creditor)] = difference
+    return net
+
+
+def debt_graph(group) -> dict:
+    """Données du graphe interactif : membres, dettes brutes et virements simplifiés."""
+    memberships = list(group.active_memberships())
+    balances = compute_balances(group)
+    nodes = [
+        {
+            "id": m.user_id,
+            "name": m.user.get_full_name() or m.user.username,
+            "balance": float(balances.get(m.user_id, ZERO)),
+        }
+        for m in memberships
+    ]
+    known = {node["id"] for node in nodes}
+    before = [
+        {"from": d, "to": c, "amount": float(amount)}
+        for (d, c), amount in sorted(pairwise_debts(group).items(), key=lambda item: -item[1])
+        if d in known and c in known
+    ]
+    after = [
+        {"from": d, "to": c, "amount": float(amount)}
+        for d, c, amount in simplify_debts(balances)
+        if d in known and c in known
+    ]
+    return {"nodes": nodes, "before": before, "after": after, "currency": group.currency}
+
+
 def balance_overview(group) -> dict:
     """Données de la page des soldes : lignes par membre et virements simplifiés."""
     memberships = {m.user_id: m for m in group.active_memberships()}

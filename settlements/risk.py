@@ -89,6 +89,24 @@ def explain(features: dict, bundle: dict | None = None) -> list[dict]:
     return contributions
 
 
+def model_params(bundle: dict | None = None) -> dict:
+    """Paramètres du modèle pour le simulateur interactif : le navigateur recalcule
+    p = 1 / (1 + e^-(b + Σ coef_i × (x_i − moyenne_i) / écart_i)) à chaque mouvement de curseur.
+    C'est exactement le calcul de StandardScaler + LogisticRegression (testé)."""
+    bundle = bundle or load_model()
+    scaler, model = bundle["pipeline"][0], bundle["pipeline"][-1]
+    return {
+        "features": FEATURES,
+        "labels": FEATURE_LABELS,
+        "mean": [round(float(v), 6) for v in scaler.mean_],
+        "scale": [round(float(v), 6) for v in scaler.scale_],
+        "coef": [round(float(v), 6) for v in model.coef_[0]],
+        "intercept": round(float(model.intercept_[0]), 6),
+        "threshold": THRESHOLD,
+        "version": bundle["version"],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Suggestion d'échéancier : on évalue tous les échéanciers possibles avec le modèle
 # ---------------------------------------------------------------------------

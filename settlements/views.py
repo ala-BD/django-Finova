@@ -60,6 +60,7 @@ class BalancesView(GroupSettlementMixin, TemplateView):
             "values": [float(row["balance"]) for row in overview["rows"]],
             "currency": group.currency,
         }
+        context["graph_data"] = services.debt_graph(group)
         context["me"] = self.get_membership()
         return context
 
@@ -213,8 +214,13 @@ class PlanFormView(GroupSettlementMixin, View):
 
     def get(self, request, gid, sid):
         settlement, plan = self.get_objects()
+        # Pré-remplissage depuis le simulateur (?installments_count=4&frequency=monthly) ;
+        # les valeurs sont revalidées par le formulaire à l'envoi.
+        initial = {
+            key: request.GET[key] for key in ("installments_count", "frequency") if request.GET.get(key)
+        }
         return self.wrong_mode(settlement, plan) or self.render_form(
-            settlement, RepaymentPlanForm(instance=plan)
+            settlement, RepaymentPlanForm(instance=plan, initial=initial)
         )
 
     def post(self, request, gid, sid):
@@ -363,6 +369,48 @@ class PlanSuggestView(GroupSettlementMixin, View):
             return JsonResponse(services.suggest_plans(settlement, capacity))
         except services.risk.RiskModelUnavailable as exc:
             return JsonResponse({"error": str(exc)}, status=503)
+
+
+class RiskSimulatorView(GroupSettlementMixin, View):
+    """IA interactive : « et si ? » sur le risque de retard, recalculé dans le navigateur."""
+
+    template_name = "settlements/simulator.html"
+
+    def get(self, request, gid, sid):
+        settlement = self.get_settlement()
+        plan = RepaymentPlan.objects.filter(settlement=settlement).first()
+        try:
+            params = services.risk.model_params()
+        except services.risk.RiskModelUnavailable as exc:
+            messages.error(request, str(exc))
+            return redirect(self.detail_url(settlement))
+        if plan:
+            features = services.risk.build_features(plan)
+        else:
+            base = {**services.risk.settlement_features(settlement), "installments_count": 3}
+            features = {name: base[name] for name in services.risk.FEATURES}
+        prediction = plan.latest_prediction() if plan else None
+        can_apply = services.can_manage_plan(settlement, request.user) and not (plan and plan.has_payments())
+        apply_url = None
+        if can_apply:
+            name = "settlements:plan_edit" if plan else "settlements:plan_create"
+            apply_url = reverse(name, kwargs={"gid": settlement.group_id, "sid": settlement.pk})
+        return render(request, self.template_name, {
+            "group": self.get_group(),
+            "settlement": settlement,
+            "plan": plan,
+            "prediction": prediction,
+            "simulator": {
+                "params": params,
+                "initial": features,
+                "weight": float(settlement.payer.weight),
+                "frequency": plan.frequency if plan else RepaymentPlan.Frequency.MONTHLY,
+                "saved_percent": prediction.percent if prediction else None,
+                "apply_url": apply_url,
+                "currency": settlement.group.currency,
+                "periods_per_month": services.risk.PERIODS_PER_MONTH,
+            },
+        })
 
 
 class PlanExportView(GroupSettlementMixin, View):
