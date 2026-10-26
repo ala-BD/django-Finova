@@ -13,5 +13,27 @@
     },
     "failures": []
   },
-  "llm": "non mesuré : LLM_API_KEY absente"
+  "llm": {
+    "sentences": 30,
+    "accuracy": {
+      "receiver": 1.0,
+      "amount": 1.0,
+      "mode": 0.967,
+      "complete": 0.967
+    },
+    "latency_ms": {
+      "mean": 735.2,
+      "p95": 970
+    },
+    "failures": [
+      {
+        "sentence": "j'ai versé 300 dt à yahya pour les courses",
+        "result": {
+          "receiver": 2,
+          "amount": "300.000",
+          "note": "Pour courses · Virement"
+        }
+      }
+    ]
+  }
 }
