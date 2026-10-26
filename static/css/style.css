@@ -1630,3 +1630,17 @@ textarea.input {
         grid-template-columns: 1fr;
     }
 }
+
+/* ── M2 · Dépenses (Yahya) ── */
+.hidden {
+    display: none !important;
+}
+
+.item-form-box {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+

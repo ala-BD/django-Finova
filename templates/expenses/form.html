@@ -17,6 +17,24 @@
         </div>
     </header>
 
+    <!-- Carte Saisie Magique (IA - Langage Naturel) -->
+    <section class="card mb-4" aria-labelledby="magic-input-title" style="border-left: 4px solid var(--accent); background: #f0fdfa; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+        <h2 id="magic-input-title" style="font-size: 1.1rem; margin-top: 0; color: var(--accent); display: flex; align-items: center; gap: 0.5rem;">
+            <span>✨</span> Saisie magique en langage naturel (IA Yahya)
+        </h2>
+        <p class="help" style="margin-bottom: 0.75rem;">
+            Tapez ou dictez une phrase libre. L'IA extrait automatiquement le titre, le montant, la date et la catégorie.
+            <br><em>Exemple : « J'ai payé 45 dinars le resto hier avec Sami »</em>
+        </p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <input type="text" id="nlp-input" class="input" placeholder="Ex: 85 dinars courses carrefour hier..." style="flex: 1; min-width: 250px;" aria-label="Description en langage naturel">
+            <button type="button" id="nlp-btn" class="btn" style="background: var(--accent); color: white; border: none;">
+                Extraire et pré-remplir
+            </button>
+        </div>
+        <div id="nlp-feedback" aria-live="polite" style="margin-top: 0.5rem; font-size: 0.9rem; font-weight: 500;"></div>
+    </section>
+
     <article class="auth-card form-card">
         {% if form.non_field_errors %}
             <div class="alert alert-error" role="alert" aria-live="assertive">
@@ -24,18 +42,125 @@
             </div>
         {% endif %}
 
-        <form method="post" enctype="multipart/form-data" novalidate>
+        <div id="ai-suggestion-box" style="display: none; padding: 0.5rem 0.75rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 0.375rem; margin-bottom: 1rem; font-size: 0.875rem; color: #065f46;" aria-live="polite">
+            💡 <strong>IA Classification :</strong> Catégorie <span id="suggested-cat-name" style="font-weight: 700;"></span> suggérée automatiquement (<span id="suggested-cat-conf"></span>).
+        </div>
+
+        <form method="post" enctype="multipart/form-data" novalidate id="expense-form">
             {% csrf_token %}
 
             {% for field in form %}
                 {% include "includes/form_field.html" with field=field %}
             {% endfor %}
 
-            <div class="form-actions">
+            <div class="form-actions" style="margin-top: 1.5rem; display: flex; gap: 1rem;">
                 <button type="submit" class="btn btn-primary">Enregistrer la dépense</button>
                 <a href="{% url 'expenses:list' gid=group.id %}" class="btn btn-outline">Annuler</a>
             </div>
         </form>
     </article>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const titleInput = document.getElementById("id_title");
+        const categorySelect = document.getElementById("id_category");
+        const amountInput = document.getElementById("id_amount");
+        const dateInput = document.getElementById("id_expense_date");
+        const currencyInput = document.getElementById("id_currency");
+
+        const suggestionBox = document.getElementById("ai-suggestion-box");
+        const suggestedCatName = document.getElementById("suggested-cat-name");
+        const suggestedCatConf = document.getElementById("suggested-cat-conf");
+
+        const nlpInput = document.getElementById("nlp-input");
+        const nlpBtn = document.getElementById("nlp-btn");
+        const nlpFeedback = document.getElementById("nlp-feedback");
+
+        // 1. Auto-catégorisation en direct lors de la saisie du titre (IA M2)
+        let debounceTimer = null;
+        if (titleInput && categorySelect) {
+            titleInput.addEventListener("input", function() {
+                clearTimeout(debounceTimer);
+                const titleVal = titleInput.value.trim();
+                if (titleVal.length < 3) {
+                    if (suggestionBox) suggestionBox.style.display = "none";
+                    return;
+                }
+
+                debounceTimer = setTimeout(function() {
+                    const url = "{% url 'expenses:categorize' gid=group.id %}?title=" + encodeURIComponent(titleVal);
+                    fetch(url)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.category_id) {
+                                // Présélectionne la catégorie dans le champ
+                                categorySelect.value = data.category_id;
+                                if (suggestionBox) {
+                                    suggestedCatName.textContent = data.category_name;
+                                    suggestedCatConf.textContent = Math.round(data.confidence * 100) + "% de confiance";
+                                    suggestionBox.style.display = "block";
+                                }
+                            }
+                        })
+                        .catch(err => console.debug("Categorize AI non disponible:", err));
+                }, 350);
+            });
+        }
+
+        // 2. Extraction en langage naturel (NLP - IA M2)
+        if (nlpBtn && nlpInput) {
+            nlpBtn.addEventListener("click", function() {
+                const phrase = nlpInput.value.trim();
+                if (!phrase) {
+                    nlpFeedback.textContent = "Veuillez entrer une description.";
+                    nlpFeedback.style.color = "#b91c1c";
+                    return;
+                }
+
+                nlpBtn.disabled = true;
+                nlpBtn.setAttribute("aria-busy", "true");
+                nlpFeedback.textContent = "⏳ Analyse en cours par l'IA...";
+                nlpFeedback.style.color = "var(--accent)";
+
+                const formData = new FormData();
+                formData.append("phrase", phrase);
+                const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]") ? document.querySelector("[name=csrfmiddlewaretoken]").value : "";
+
+                fetch("{% url 'expenses:nlp_extract' gid=group.id %}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    nlpBtn.disabled = false;
+                    nlpBtn.removeAttribute("aria-busy");
+
+                    if (data.success) {
+                        if (titleInput && data.title) titleInput.value = data.title;
+                        if (amountInput && data.amount > 0) amountInput.value = parseFloat(data.amount).toFixed(3);
+                        if (currencyInput && data.currency) currencyInput.value = data.currency;
+                        if (dateInput && data.expense_date) dateInput.value = data.expense_date;
+                        if (categorySelect && data.category_id) categorySelect.value = data.category_id;
+
+                        nlpFeedback.textContent = "✅ Formulaire pré-rempli avec succès ! Vérifiez et enregistrez.";
+                        nlpFeedback.style.color = "#047857";
+                    } else {
+                        nlpFeedback.textContent = data.error || "Impossible d'extraire les données.";
+                        nlpFeedback.style.color = "#b91c1c";
+                    }
+                })
+                .catch(err => {
+                    nlpBtn.disabled = false;
+                    nlpBtn.removeAttribute("aria-busy");
+                    nlpFeedback.textContent = "Erreur lors de l'appel IA. Veuillez remplir le formulaire manuellement.";
+                    nlpFeedback.style.color = "#b91c1c";
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -1,0 +1,537 @@
+title,category
+courses carrefour,alimentation
+note courses carrefour,alimentation
+courses monoprix,alimentation
+paiement courses monoprix,alimentation
+courses auchan,alimentation
+paiement courses auchan,alimentation
+courses leclerc,alimentation
+courses lidl,alimentation
+note courses lidl,alimentation
+supermarche carrefour,alimentation
+paiement supermarche carrefour,alimentation
+supermarche monoprix,alimentation
+epicerie de nuit,alimentation
+paiement epicerie de nuit,alimentation
+boucherie viande,alimentation
+reglement boucherie viande,alimentation
+poissonnerie poisson frais,alimentation
+achat poissonnerie poisson frais,alimentation
+boulangerie pain baguette,alimentation
+solde boulangerie pain baguette,alimentation
+croissants patisserie boulangerie,alimentation
+frais croissants patisserie boulangerie,alimentation
+restaurant italien pizza,alimentation
+note restaurant italien pizza,alimentation
+pizzeria 4 fromages,alimentation
+solde pizzeria 4 fromages,alimentation
+burger frites fast food,alimentation
+note burger frites fast food,alimentation
+mcdo menu burger,alimentation
+dejeuner midi brasserie,alimentation
+achat dejeuner midi brasserie,alimentation
+diner restaurant entre amis,alimentation
+solde diner restaurant entre amis,alimentation
+sushi bar japon,alimentation
+achat sushi bar japon,alimentation
+cafe espresso comptoir,alimentation
+frais cafe espresso comptoir,alimentation
+sandwich thon boulangerie,alimentation
+note sandwich thon boulangerie,alimentation
+salade traiteur midi,alimentation
+kebab frites sauce blanche,alimentation
+note kebab frites sauce blanche,alimentation
+tacos gratin,alimentation
+reglement tacos gratin,alimentation
+creperie crepes cidre,alimentation
+reglement creperie crepes cidre,alimentation
+glaces artisanales cornet,alimentation
+paiement glaces artisanales cornet,alimentation
+brunch dimanche buffet,alimentation
+marche legumes fruits,alimentation
+paiement marche legumes fruits,alimentation
+boissons soda eau gazeuse,alimentation
+note boissons soda eau gazeuse,alimentation
+repas equipe resto midi,alimentation
+achat repas equipe resto midi,alimentation
+traiteur paella reception,alimentation
+frais traiteur paella reception,alimentation
+couscous restaurant tunisien,alimentation
+frais couscous restaurant tunisien,alimentation
+barbecue cote de boeuf,alimentation
+note barbecue cote de boeuf,alimentation
+pates riz huile supermarche,alimentation
+chocolats confiserie friandises,alimentation
+paiement chocolats confiserie friandises,alimentation
+snack distributeur cafe,alimentation
+achat snack distributeur cafe,alimentation
+plateau fromages charcuterie,alimentation
+paiement plateau fromages charcuterie,alimentation
+billet de train sncft,transport
+note billet de train sncft,transport
+billet train tgv sncf,transport
+solde billet train tgv sncf,transport
+ticket de metro tram bus,transport
+reglement ticket de metro tram bus,transport
+carte transport abonnement,transport
+reglement carte transport abonnement,transport
+course taxi bolt,transport
+note course taxi bolt,transport
+course vtc uber chauffeur,transport
+paiement course vtc uber chauffeur,transport
+plein essence sans plomb,transport
+paiement plein essence sans plomb,transport
+plein gasoil diesel total,transport
+note plein gasoil diesel total,transport
+carburant station service shell,transport
+recharge voiture electrique borne,transport
+paiement recharge voiture electrique borne,transport
+peage autoroute ticket,transport
+frais peage autoroute ticket,transport
+parking souterrain vinci,transport
+reglement parking souterrain vinci,transport
+horodateur stationnement centre ville,transport
+amende stationnement auto,transport
+frais amende stationnement auto,transport
+billet avion tunisair vol,transport
+paiement billet avion tunisair vol,transport
+vol aller retour nouvelair,transport
+achat vol aller retour nouvelair,transport
+location voiture agence sixt,transport
+achat location voiture agence sixt,transport
+location utilitaire camionnette,transport
+note location utilitaire camionnette,transport
+vidange revision garage auto,transport
+note vidange revision garage auto,transport
+changement pneus garage,transport
+achat changement pneus garage,transport
+controle technique automobile,transport
+note controle technique automobile,transport
+lavage auto rouleaux,transport
+reglement lavage auto rouleaux,transport
+reparation crevaison pneu garage,transport
+achat reparation crevaison pneu garage,transport
+antivol cadenas velo,transport
+reglement antivol cadenas velo,transport
+location trottinette lime trajet,transport
+paiement location trottinette lime trajet,transport
+covoiturage blablacar trajet,transport
+note covoiturage blablacar trajet,transport
+batterie voiture garage,transport
+achat batterie voiture garage,transport
+navette bus aeroport,transport
+note navette bus aeroport,transport
+plaquettes de freins garage,transport
+achat plaquettes de freins garage,transport
+carte grise vehicule,transport
+note carte grise vehicule,transport
+assurance auto mensuelle,transport
+solde assurance auto mensuelle,transport
+billet ferry traversee bateau,transport
+reglement billet ferry traversee bateau,transport
+reparation scooter moto garage,transport
+solde reparation scooter moto garage,transport
+lavage karcher voiture station,transport
+reglement lavage karcher voiture station,transport
+remorquage depannage vehicule,transport
+frais remorquage depannage vehicule,transport
+essuie glaces pare brise auto,transport
+loyer appartement mensuel,logement
+solde loyer appartement mensuel,logement
+loyer studio colocation,logement
+paiement loyer studio colocation,logement
+charges copropriete residence,logement
+reglement charges copropriete residence,logement
+facture steg electricite gaz,logement
+note facture steg electricite gaz,logement
+facture sonede eau potable,logement
+paiement facture sonede eau potable,logement
+assurance habitation colocation,logement
+achat assurance habitation colocation,logement
+taxe habitation fonciere,logement
+paiement taxe habitation fonciere,logement
+plombier fuite eau evier,logement
+achat plombier fuite eau evier,logement
+serrurier changement serrure,logement
+paiement serrurier changement serrure,logement
+pots de peinture bricolage,logement
+meuble ikea table basse,logement
+frais meuble ikea table basse,logement
+matelas lit sommier chambre,logement
+paiement matelas lit sommier chambre,logement
+ampoules led multiprise bricolage,logement
+solde ampoules led multiprise bricolage,logement
+rideaux salon voilages,logement
+achat rideaux salon voilages,logement
+aspirateur nettoyage maison,logement
+reglement aspirateur nettoyage maison,logement
+four micro ondes cuisine,logement
+solde four micro ondes cuisine,logement
+refrigerateur congelateur cuisine,logement
+lave linge machine a laver,logement
+achat lave linge machine a laver,logement
+fer a repasser vapeur linge,logement
+achat fer a repasser vapeur linge,logement
+depannage electromenager,logement
+paiement depannage electromenager,logement
+armoire penderie dressing,logement
+reglement armoire penderie dressing,logement
+chaises table salle a manger,logement
+reglement chaises table salle a manger,logement
+commode tiroirs meuble,logement
+solde commode tiroirs meuble,logement
+ventilateur climatiseur ete,logement
+radiateur electrique chauffage,logement
+reglement radiateur electrique chauffage,logement
+produits menage nettoyant sol,logement
+solde produits menage nettoyant sol,logement
+lessive liquide adoucissant,logement
+frais lessive liquide adoucissant,logement
+sacs poubelle eponges menage,logement
+paiement sacs poubelle eponges menage,logement
+papier toilette rouleaux menage,logement
+caution garantie appartement,logement
+frais caution garantie appartement,logement
+luminaires lustre salon plafonnier,logement
+paiement luminaires lustre salon plafonnier,logement
+miroir salle de bain applique,logement
+solde miroir salle de bain applique,logement
+quincaillerie marteau vis bricolage,logement
+paiement quincaillerie marteau vis bricolage,logement
+entretien chaudiere gaz annuel,logement
+achat entretien chaudiere gaz annuel,logement
+draps serviettes couette lit,logement
+achat draps serviettes couette lit,logement
+vaisselle poele casseroles cuisine,logement
+places de cinema film seance,loisirs
+solde places de cinema film seance,loisirs
+abonnement netflix streaming mois,loisirs
+solde abonnement netflix streaming mois,loisirs
+abonnement spotify musique mois,loisirs
+note abonnement spotify musique mois,loisirs
+soiree bar biere billard,loisirs
+note soiree bar biere billard,loisirs
+partie bowling soiree,loisirs
+achat partie bowling soiree,loisirs
+session escape game enigme,loisirs
+frais session escape game enigme,loisirs
+billet concert live festival,loisirs
+piece de theatre spectacle comique,loisirs
+paiement piece de theatre spectacle comique,loisirs
+entree musee beaux arts expo,loisirs
+paiement entree musee beaux arts expo,loisirs
+parc d attractions maneges entree,loisirs
+solde parc d attractions maneges entree,loisirs
+visite zoo animaux safari,loisirs
+frais visite zoo animaux safari,loisirs
+jeu video playstation console,loisirs
+abonnement playstation plus reseau,loisirs
+solde abonnement playstation plus reseau,loisirs
+manette console jeu sans fil,loisirs
+paiement manette console jeu sans fil,loisirs
+livre roman librairie fnac,loisirs
+achat bd manga bande dessinee,loisirs
+jeux de societe cartes plateau,loisirs
+achat jeux de societe cartes plateau,loisirs
+location kayak paddle riviere,loisirs
+solde location kayak paddle riviere,loisirs
+cours surf vagues ocean,loisirs
+forfait ski journee pistes,loisirs
+frais forfait ski journee pistes,loisirs
+location skis chaussures montagne,loisirs
+paiement location skis chaussures montagne,loisirs
+session karting circuit vitesse,loisirs
+reglement session karting circuit vitesse,loisirs
+partie laser game pistolet,loisirs
+achat partie laser game pistolet,loisirs
+entree boite nuit clubbing soiree,loisirs
+cocktails bar lounge soiree,loisirs
+frais cocktails bar lounge soiree,loisirs
+tournee bieres pub irlandais,loisirs
+paiement tournee bieres pub irlandais,loisirs
+tente camping bivouac randonnee,loisirs
+paiement tente camping bivouac randonnee,loisirs
+guide montagne randonnee trek,loisirs
+peinture dessin toiles pinceaux,loisirs
+note peinture dessin toiles pinceaux,loisirs
+aquarium visite poissons entree,loisirs
+spectacle humour stand up one man,loisirs
+achat spectacle humour stand up one man,loisirs
+cours yoga seance pilates,loisirs
+salle escalade bloc seance,loisirs
+note salle escalade bloc seance,loisirs
+partie mini golf loisir,loisirs
+reglement partie mini golf loisir,loisirs
+soiree karaoke musique chansons,loisirs
+note soiree karaoke musique chansons,loisirs
+match foot stade billets,loisirs
+solde match foot stade billets,loisirs
+pharmacie medicaments ordonnance,sante
+reglement pharmacie medicaments ordonnance,sante
+boite doliprane paracetamol pharmacie,sante
+paiement boite doliprane paracetamol pharmacie,sante
+sirop toux maux de gorge,sante
+note sirop toux maux de gorge,sante
+pansements desinfectant compresses alcool,sante
+reglement pansements desinfectant compresses alcool,sante
+thermometre digital pharmacie,sante
+note thermometre digital pharmacie,sante
+consultation medecin generaliste,sante
+paiement consultation medecin generaliste,sante
+consultation dentiste cabinet soins,sante
+soins dentaires detartrage carie,sante
+achat soins dentaires detartrage carie,sante
+visite ophtalmologue ordonnance vue,sante
+paiement visite ophtalmologue ordonnance vue,sante
+lunettes de vue monture verres,sante
+reglement lunettes de vue monture verres,sante
+lentilles de contact rincage vue,sante
+note lentilles de contact rincage vue,sante
+seance kine kynesitherapie massage,sante
+achat seance kine kynesitherapie massage,sante
+consultation osteopathe dos seance,sante
+achat consultation osteopathe dos seance,sante
+prise de sang laboratoire analyses,sante
+reglement prise de sang laboratoire analyses,sante
+examen radio irm radiographie,sante
+reglement examen radio irm radiographie,sante
+vitamines magnesium pharmacie,sante
+note vitamines magnesium pharmacie,sante
+pastilles miel gorge pharmacie,sante
+frais pastilles miel gorge pharmacie,sante
+creme solaire pharmacie protection,sante
+frais creme solaire pharmacie protection,sante
+pommade arnica coups bleus pharmacie,sante
+reglement pommade arnica coups bleus pharmacie,sante
+tensiometre bras mesure tension,sante
+paiement tensiometre bras mesure tension,sante
+test antigenique autotest pharmacie,sante
+frais test antigenique autotest pharmacie,sante
+cotisation mutuelle sante complementaire,sante
+paiement cotisation mutuelle sante complementaire,sante
+genouillere chevillere maintien pharmacie,sante
+reglement genouillere chevillere maintien pharmacie,sante
+consultation dermatologue peau,sante
+solde consultation dermatologue peau,sante
+spray nasal nez rhume pharmacie,sante
+frais spray nasal nez rhume pharmacie,sante
+collyre yeux gouttes pharmacie,sante
+frais collyre yeux gouttes pharmacie,sante
+pediatre vaccin consultation bebe,sante
+solde pediatre vaccin consultation bebe,sante
+bequilles cannes anglaises pharmacie,sante
+reglement bequilles cannes anglaises pharmacie,sante
+bande strapping entorse pharmacie,sante
+paiement bande strapping entorse pharmacie,sante
+biafine creme brulure pharmacie,sante
+paiement biafine creme brulure pharmacie,sante
+gel hydroalcoolique mains pharmacie,sante
+frais gel hydroalcoolique mains pharmacie,sante
+masques ffp2 protection pharmacie,sante
+achat masques ffp2 protection pharmacie,sante
+consultation psy therapie seance,sante
+paiement consultation psy therapie seance,sante
+cardiologue bilan coeur consultation,sante
+achat cardiologue bilan coeur consultation,sante
+pansements ampoules talons pharmacie,sante
+achat pansements ampoules talons pharmacie,sante
+bain de bouche dentaire pharmacie,sante
+vetements chemise pantalon zara,shopping
+reglement vetements chemise pantalon zara,shopping
+t shirt coton basique magasin,shopping
+jean denim levis pantalon,shopping
+paiement jean denim levis pantalon,shopping
+chaussures baskets sneakers nike,shopping
+reglement chaussures baskets sneakers nike,shopping
+manteau hiver doudoune capuche,shopping
+reglement manteau hiver doudoune capuche,shopping
+chaussures cuir ville habillees,shopping
+frais chaussures cuir ville habillees,shopping
+pull maille laine hiver,shopping
+paiement pull maille laine hiver,shopping
+sweat capuche streetwear sweat,shopping
+achat sweat capuche streetwear sweat,shopping
+lot sous vetements chaussettes,shopping
+frais lot sous vetements chaussettes,shopping
+sac a dos sacoche ville,shopping
+valise roulettes voyage cabine,shopping
+frais valise roulettes voyage cabine,shopping
+parfum sephora eau de toilette,shopping
+achat parfum sephora eau de toilette,shopping
+maquillage rouge levres sephora,shopping
+note maquillage rouge levres sephora,shopping
+creme hydratante soin visage,shopping
+paiement creme hydratante soin visage,shopping
+montre poignet bracelet acier,shopping
+frais montre poignet bracelet acier,shopping
+lunettes de soleil solaire opticien,shopping
+note lunettes de soleil solaire opticien,shopping
+bijoux argent collier bracelet,shopping
+note bijoux argent collier bracelet,shopping
+ceinture cuir pantalon boucle,shopping
+solde ceinture cuir pantalon boucle,shopping
+robe imprimee chemisier femme,shopping
+reglement robe imprimee chemisier femme,shopping
+maillot de bain plage short,shopping
+frais maillot de bain plage short,shopping
+veste blazer costume veste,shopping
+pyjama coton nuit tenue,shopping
+achat pyjama coton nuit tenue,shopping
+bonnet echarpe gants laine,shopping
+solde bonnet echarpe gants laine,shopping
+souris clavier informatique fnac,shopping
+solde souris clavier informatique fnac,shopping
+cle usb disque dur externe,shopping
+achat cle usb disque dur externe,shopping
+chargeur rapide telephone usb c,shopping
+paiement chargeur rapide telephone usb c,shopping
+cable charge smartphone iphone,shopping
+solde cable charge smartphone iphone,shopping
+coque protection verre trempe,shopping
+achat coque protection verre trempe,shopping
+ecouteurs sans fil bluetooth casque,shopping
+note ecouteurs sans fil bluetooth casque,shopping
+tapis coussins plaid deco,shopping
+frais tapis coussins plaid deco,shopping
+fournitures scolaires stylos cahier,shopping
+frais fournitures scolaires stylos cahier,shopping
+short de sport survetement fitness,shopping
+frais short de sport survetement fitness,shopping
+portefeuille porte cartes cuir,shopping
+note portefeuille porte cartes cuir,shopping
+parapluie pliant pluie tempete,shopping
+housse pochette ordi portable,shopping
+sandales claquettes tongs ete,shopping
+abonnement box internet fibre telecom,factures
+paiement abonnement box internet fibre telecom,factures
+forfait telephone mobile 5g ooredoo,factures
+achat forfait telephone mobile 5g ooredoo,factures
+facture operateur telephonique orange,factures
+frais facture operateur telephonique orange,factures
+abonnement mensuel salle de sport basic fit,factures
+paiement abonnement mensuel salle de sport basic fit,factures
+cotisation club sport annuel fitness,factures
+reglement cotisation club sport annuel fitness,factures
+abonnement journal actualite presse,factures
+reglement abonnement journal actualite presse,factures
+hebergement site web serveur ovh,factures
+renouvellement nom de domaine dns,factures
+reglement renouvellement nom de domaine dns,factures
+licence suite logicielle abonnement cloud,factures
+paiement licence suite logicielle abonnement cloud,factures
+stockage cloud espace icloud google,factures
+note stockage cloud espace icloud google,factures
+assurance scolaire enfants annuel,factures
+reglement assurance scolaire enfants annuel,factures
+cotisation carte bancaire visa banque,factures
+assurance moyens paiement carte banque,factures
+achat assurance moyens paiement carte banque,factures
+redevance tv television abonnement,factures
+cotisation annuelle association ordre,factures
+frais cotisation annuelle association ordre,factures
+frais tenue compte bancaire gestion,factures
+abonnement revue magazine sciences,factures
+frais abonnement revue magazine sciences,factures
+redevance cable decodeur chaines tv,factures
+note redevance cable decodeur chaines tv,factures
+contrat entretien annuel chaudiere gaz,factures
+reglement contrat entretien annuel chaudiere gaz,factures
+abonnement bouquet canal plus tv,factures
+paiement abonnement bouquet canal plus tv,factures
+licence antivirus securite ordinateur,factures
+abonnement service visio reunion meet,factures
+solde abonnement service visio reunion meet,factures
+forfait badge telepeage autoroute,factures
+note forfait badge telepeage autoroute,factures
+cotisation club reseau affaires annuel,factures
+solde cotisation club reseau affaires annuel,factures
+abonnements vod streaming series bouquet,factures
+frais abonnements vod streaming series bouquet,factures
+taxe ordures menageres dechets redevance,factures
+charges contrat maintenance ascenseur,factures
+solde charges contrat maintenance ascenseur,factures
+licence bureautique office abonnement,factures
+frais licence bureautique office abonnement,factures
+abonnement streaming musical haute fidelite,factures
+note abonnement streaming musical haute fidelite,factures
+facture assainissement eau collectif,factures
+frais facture assainissement eau collectif,factures
+abonnement velo ville service annuel,factures
+paiement abonnement velo ville service annuel,factures
+frais dossier organisme inscription facture,factures
+frais frais dossier organisme inscription facture,factures
+abonnement alarme surveillance securite,factures
+note abonnement alarme surveillance securite,factures
+forfait compte bancaire formule mensuelle,factures
+frais forfait compte bancaire formule mensuelle,factures
+adhesion annuelle club loisirs facture,factures
+abonnement cours langues mobile appli,factures
+frais abonnement cours langues mobile appli,factures
+retrait argent especes dab banque,autre
+solde retrait argent especes dab banque,autre
+frais bancaires virement international,autre
+reglement frais bancaires virement international,autre
+don association caritative secours caritas,autre
+note don association caritative secours caritas,autre
+pourboire service restaurant cafe,autre
+solde pourboire service restaurant cafe,autre
+consigne bagages gare casier,autre
+note consigne bagages gare casier,autre
+timbre fiscal passeport formalite,autre
+frais timbre fiscal passeport formalite,autre
+photocopies impressions dossier documents,autre
+frais de dossier administratif inscription,autre
+note frais de dossier administratif inscription,autre
+commission frais change devises aéroport,autre
+reglement commission frais change devises aéroport,autre
+depannage divers reparation imprevu,autre
+reglement depannage divers reparation imprevu,autre
+retenue depot garantie caution,autre
+achat retenue depot garantie caution,autre
+remboursement trop percu versement ami,autre
+pret amical depannage especes,autre
+achat pret amical depannage especes,autre
+frais garde meubles stockage box,autre
+reglement frais garde meubles stockage box,autre
+affranchissement envoi colis la poste,autre
+frais affranchissement envoi colis la poste,autre
+penalite retard amende dossier administratif,autre
+solde penalite retard amende dossier administratif,autre
+recharge solde cantine badge,autre
+solde recharge solde cantine badge,autre
+participation cadeau commun cagnotte pot,autre
+paiement participation cadeau commun cagnotte pot,autre
+pourboire livreur repas coursier,autre
+note pourboire livreur repas coursier,autre
+regularisation compte bancaire solde,autre
+reglement regularisation compte bancaire solde,autre
+reprise occasion achat troc objet,autre
+note reprise occasion achat troc objet,autre
+jetons lavage station monnaie,autre
+frais greffe tribunal extrait kbis,autre
+solde frais greffe tribunal extrait kbis,autre
+legalisation document mairie signature,autre
+achat legalisation document mairie signature,autre
+double cles serrure quincaillerie,autre
+achat double cles serrure quincaillerie,autre
+remplacement carte badge perte,autre
+solde remplacement carte badge perte,autre
+commission transaction frais intermediaire,autre
+paiement commission transaction frais intermediaire,autre
+carnet timbres postaux poste courrier,autre
+solde carnet timbres postaux poste courrier,autre
+frais rejet prelevement bancaire impaye,autre
+solde frais rejet prelevement bancaire impaye,autre
+versement accord amical compensation,autre
+depot gravats dechetterie frais,autre
+achat depot gravats dechetterie frais,autre
+dons telethon association caritative,autre
+solde dons telethon association caritative,autre
+billet tombola loterie jeu tirage,autre
+paiement billet tombola loterie jeu tirage,autre
+frais inscription examen concours divers,autre
+achat frais inscription examen concours divers,autre
+location deguisement soiree fete costume,autre
+reglement location deguisement soiree fete costume,autre
+location materiel sono fetes soiree,autre
+achat location materiel sono fetes soiree,autre

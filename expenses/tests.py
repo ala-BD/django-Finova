@@ -312,3 +312,76 @@ class ExpenseViewTests(TestCase):
         # Dé-réclamation
         self.client.post(claim_url)
         self.assertFalse(ItemClaim.objects.filter(item=item, member=self.membership).exists())
+
+    def test_ajax_categorize_view(self):
+        """L'endpoint AJAX de catégorisation renvoie la suggestion scikit-learn."""
+        url = reverse("expenses:categorize", kwargs={"gid": self.group.id}) + "?title=Courses%20Monoprix"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("category_id", data)
+        self.assertIn("category_name", data)
+        self.assertIn("confidence", data)
+        self.assertGreaterEqual(data["confidence"], 0.0)
+
+    def test_ajax_nlp_extract_view(self):
+        """L'endpoint AJAX NLP extrait les données de dépense en langage naturel."""
+        url = reverse("expenses:nlp_extract", kwargs={"gid": self.group.id})
+        payload = {"phrase": "J'ai payé 45 dinars le resto hier avec Sami"}
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get("success"))
+        self.assertAlmostEqual(float(data["amount"]), 45.0)
+        self.assertEqual(data["currency"], "TND")
+        self.assertIn("resto", data["title"].lower())
+
+    def test_spec_table_restaurant_item_split_with_tax_and_tip(self):
+        """
+        Vérification exacte du tableau de la spécification M2 (page 18 du rapport):
+        Pizza: 24,0 (Alice)
+        Salade: 12,0 (Bob)
+        Boisson: 6,0 (Bob)
+        Total articles: 42,0
+        Taxe + pourboire: 8,4
+        Total dépense: 50,4
+        Part Alice: 28,8 TND | Part Bob: 21,6 TND.
+        """
+        u_alice = User.objects.create_user(username="alice_spec", email="alice_spec@test.com", password="P1!")
+        u_bob = User.objects.create_user(username="bob_spec", email="bob_spec@test.com", password="P1!")
+        m_alice = Membership.objects.create(user=u_alice, group=self.group, role="member")
+        m_bob = Membership.objects.create(user=u_bob, group=self.group, role="member")
+
+        # Désactiver les autres membres pour ce test spécifique pour tester exactement les 2 personnes
+        Membership.objects.filter(group=self.group).exclude(id__in=[m_alice.id, m_bob.id]).update(is_active=False)
+
+        expense = Expense.objects.create(
+            group=self.group,
+            payer=m_alice,
+            title="Dîner restaurant",
+            amount=Decimal("50.400"),
+            tax_amount=Decimal("4.200"),
+            tip_amount=Decimal("4.200"),
+            split_rule=Expense.SplitRule.BY_ITEM,
+        )
+
+        item_pizza = ExpenseItem.objects.create(expense=expense, label="Pizza", unit_price=Decimal("24.000"), quantity=1)
+        item_salade = ExpenseItem.objects.create(expense=expense, label="Salade", unit_price=Decimal("12.000"), quantity=1)
+        item_boisson = ExpenseItem.objects.create(expense=expense, label="Boisson", unit_price=Decimal("6.000"), quantity=1)
+
+        ItemClaim.objects.create(item=item_pizza, member=m_alice)
+        ItemClaim.objects.create(item=item_salade, member=m_bob)
+        ItemClaim.objects.create(item=item_boisson, member=m_bob)
+
+        expense.compute_shares()
+
+        share_alice = ExpenseShare.objects.get(expense=expense, member=m_alice)
+        share_bob = ExpenseShare.objects.get(expense=expense, member=m_bob)
+
+        # Alice: 24 + 8.4 * 24 / 42 = 28.800
+        self.assertEqual(share_alice.amount_due, Decimal("28.800"))
+        # Bob: 18 + 8.4 * 18 / 42 = 21.600
+        self.assertEqual(share_bob.amount_due, Decimal("21.600"))
+        # Total exact
+        self.assertEqual(share_alice.amount_due + share_bob.amount_due, Decimal("50.400"))
+

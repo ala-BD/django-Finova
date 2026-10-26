@@ -12,4 +12,6 @@ urlpatterns = [
     path("<int:pk>/delete/", views.ExpenseDeleteView.as_view(), name="delete"),
     path("<int:pk>/items/add/", views.ExpenseItemCreateView.as_view(), name="item_add"),
     path("<int:pk>/items/<int:item_id>/claim/", views.ItemClaimToggleView.as_view(), name="item_claim"),
+    path("categorize/", views.ExpenseCategorizeView.as_view(), name="categorize"),
+    path("nlp-extract/", views.ExpenseNLPExtractView.as_view(), name="nlp_extract"),
 ]
