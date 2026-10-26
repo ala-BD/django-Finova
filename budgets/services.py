@@ -556,19 +556,6 @@ def recommend_budget(group, category, month: date, user=None) -> dict:
     }
 
 
-# --- IA : analyse de tous les budgets du mois ------------------------------------------
-
-
-def group_analyses(group, user=None, today: date | None = None) -> list[dict]:
-    """Analyse IA de chaque budget du mois en cours, du plus risqué au moins risqué."""
-    today = today or timezone.localdate()
-    analyses = []
-    for status in group_budget_statuses(group, first_of_month(today)):
-        analysis = forecast_budget(status["budget"], today=today, user=user)
-        analyses.append({"status": status, "analysis": analysis})
-    return sorted(analyses, key=lambda row: -(row["analysis"]["overrun_probability"] or 0))
-
-
 def analysis_payload(budget: Budget, analysis: dict | None) -> dict:
     """Représentation JSON d'une analyse (API /insight/)."""
 

@@ -120,14 +120,6 @@ class InsightViewsTests(TestCase):
     def url(self, name, **kwargs):
         return reverse(f"budgets:{name}", kwargs={"gid": self.group.pk, **kwargs})
 
-    def test_insights_page_shows_risk_and_model_card(self, _):
-        self.client.force_login(self.member)
-        response = self.client.get(self.url("insights"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'role="meter"')
-        self.assertContains(response, "Pourquoi ce risque ?")
-        self.assertContains(response, "Fiche du modèle")
-
     def test_insight_api_json_structure(self, _):
         self.client.force_login(self.member)
         data = self.client.get(self.url("insight_api", pk=self.budget.pk)).json()
@@ -145,8 +137,7 @@ class InsightViewsTests(TestCase):
 
     def test_outsider_and_foreign_budget_are_refused(self, _):
         self.client.force_login(make_user())
-        for url in (self.url("insights"), self.url("insight_api", pk=self.budget.pk)):
-            self.assertEqual(self.client.get(url).status_code, 403, url)
+        self.assertEqual(self.client.get(self.url("insight_api", pk=self.budget.pk)).status_code, 403)
         foreign = make_budget(make_category(make_group(admin=self.admin)), OCTOBER)
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get(self.url("insight_api", pk=foreign.pk)).status_code, 404)

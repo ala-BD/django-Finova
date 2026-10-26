@@ -79,7 +79,6 @@
                             <p class="forecast-line">
                                 Risque de dépassement :
                                 <span class="risk risk-{{ s.forecast.risk_level }}">{{ s.forecast.risk_percent }} % · {{ s.forecast.risk_label }}</span>
-                                <a href="{% url 'budgets:insights' group.pk %}#analyse-{{ s.budget.pk }}">Pourquoi ?</a>
                             </p>
                         {% endif %}
                     </div>

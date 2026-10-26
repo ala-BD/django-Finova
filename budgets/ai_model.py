@@ -39,7 +39,7 @@ def predict_overrun_probability(features: dict) -> float | None:
 
 
 def model_card() -> dict | None:
-    """Version, seuil et métriques du modèle, affichés dans l'onglet « Analyse IA »."""
+    """Version, seuil et métriques du modèle (fiche du modèle pour la soutenance)."""
     bundle = load_overrun_model()
     if bundle is None:
         return None

@@ -136,7 +136,7 @@ Cible du rapport (gain ≥ 10 %) atteinte. Latence du calcul : 0,07 ms en moyenn
 le 1er donnerait une prévision de 36 000 TND. Elle reste utile comme repli quand une catégorie
 n'a encore aucun historique. Données générées : à annoncer clairement à la soutenance.
 
-### Risque de dépassement : modèle d'apprentissage automatique (onglet « Analyse IA »)
+### Risque de dépassement : modèle d'apprentissage automatique
 
 **Question posée au modèle :** « au jour d, ce budget sera-t-il dépassé à la fin du mois ? »
 Réponse : une **probabilité** (« Risque 78 % · élevé »), plus fine qu'un simple oui/non.
@@ -192,7 +192,7 @@ Réservées aux membres du groupe (403 sinon, 404 pour un budget d'un autre grou
 
 ### Rapport PDF et envoi par email
 
-Sur l'onglet **Budgets** (n'importe quel mois) et sur **Analyse IA** :
+Sur l'onglet **Budgets** (n'importe quel mois) :
 
 - **Télécharger le PDF** (`GET /groups/<gid>/budgets/report.pdf?month=2026-10`) : rapport généré avec
   **reportlab** — totaux, consommation par catégorie avec statut, et pour le mois en cours l'analyse IA
@@ -251,8 +251,6 @@ animation désactivée si `prefers-reduced-motion`, mise en page fluide jusqu'au
    au-dessus de 100 % → rafraîchir la page des budgets.
 5. **Simulateur** : Restaurants, 20 %, 360 TND → résultat sans rechargement.
 6. **Télécharger le PDF**, puis **Recevoir par email** (l'email apparaît dans le terminal du serveur).
-   **Analyse IA** : cartes triées par risque, « Pourquoi ce risque ? »,
-   bouton « Recalculer via l'API », lien « Voir le JSON », puis la fiche du modèle (F1, AUC).
 7. Se reconnecter en `yahya` : boutons de gestion absents, `/budgets/new/` → 403.
 
 ## 8. Questions probables à l'oral

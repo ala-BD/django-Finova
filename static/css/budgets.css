@@ -547,12 +547,7 @@ input[type="color"].input {
     font-variant-numeric: tabular-nums;
 }
 
-/* Analyse IA : risque de dépassement */
-.tag-lg {
-    font-size: 1rem;
-    padding: 0.1rem 0.55rem;
-    vertical-align: 0.25rem;
-}
+/* Risque de dépassement (cartes de budget) */
 
 .forecast-line {
     margin: 0;
@@ -593,83 +588,6 @@ input[type="color"].input {
 .risk-unknown {
     background: var(--track);
     color: var(--muted);
-}
-
-.risk-meter {
-    height: 0.6rem;
-    margin: 0.9rem 0 0.25rem;
-    background: var(--track);
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.risk-meter-fill {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.4s ease;
-}
-
-.risk-bg-low {
-    background: var(--ok);
-}
-
-.risk-bg-medium {
-    background: #a16207;
-}
-
-.risk-bg-high {
-    background: var(--error);
-}
-
-.factors-title {
-    margin: 1rem 0 0.35rem;
-    font-size: 0.95rem;
-}
-
-.factors {
-    margin: 0;
-    padding-left: 1.2rem;
-    color: var(--muted);
-    font-size: 0.93rem;
-}
-
-.ai-summary {
-    margin: 0 0 1.5rem;
-    border-left: 6px solid #6d28d9;
-}
-
-.ai-summary .ai-output:not(:empty) {
-    margin: 0 0 0.75rem;
-}
-
-.model-card {
-    margin-top: 2rem;
-    padding: 1.25rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-}
-
-.model-card h2 {
-    margin-top: 0;
-    font-size: 1.15rem;
-}
-
-.model-card caption {
-    padding: 0.75rem 1rem 0;
-    text-align: left;
-    font-weight: 600;
-}
-
-.model-card .table-wrap {
-    margin: 0.75rem 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .risk-meter-fill {
-        transition: none;
-    }
 }
 
 .empty-state {
