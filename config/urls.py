@@ -9,8 +9,11 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", home, name="home"),
     path("accounts/", include("accounts.urls")),
+
     path("groups/", include("groups.urls")),
-    path("expenses/", include("expenses.urls")),
+    path("groups/<int:gid>/expenses/", include("expenses.urls")),
+
+
     path("settlements/", include("settlements.urls")),
     path("budgets/", include("budgets.urls")),
     path("analytics/", include("analytics.urls")),

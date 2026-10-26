@@ -1,0 +1,162 @@
+{
+  "dataset_size": 536,
+  "classes": [
+    "alimentation",
+    "autre",
+    "factures",
+    "logement",
+    "loisirs",
+    "sante",
+    "shopping",
+    "transport"
+  ],
+  "f1_score_macro": 0.8965,
+  "target_f1_macro": 0.8,
+  "f1_target_met": true,
+  "avg_latency_ms": 0.45,
+  "confusion_matrix": [
+    [
+      10,
+      0,
+      0,
+      2,
+      0,
+      0,
+      1,
+      1
+    ],
+    [
+      0,
+      12,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2
+    ],
+    [
+      0,
+      1,
+      10,
+      0,
+      0,
+      1,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      13,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      11,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      14,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      13,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      14
+    ]
+  ],
+  "classification_report": {
+    "alimentation": {
+      "precision": 1.0,
+      "recall": 0.7142857142857143,
+      "f1-score": 0.8333333333333334,
+      "support": 14.0
+    },
+    "autre": {
+      "precision": 0.9230769230769231,
+      "recall": 0.8571428571428571,
+      "f1-score": 0.8888888888888888,
+      "support": 14.0
+    },
+    "factures": {
+      "precision": 1.0,
+      "recall": 0.7692307692307693,
+      "f1-score": 0.8695652173913043,
+      "support": 13.0
+    },
+    "logement": {
+      "precision": 0.8666666666666667,
+      "recall": 1.0,
+      "f1-score": 0.9285714285714286,
+      "support": 13.0
+    },
+    "loisirs": {
+      "precision": 1.0,
+      "recall": 0.8461538461538461,
+      "f1-score": 0.9166666666666666,
+      "support": 13.0
+    },
+    "sante": {
+      "precision": 0.8235294117647058,
+      "recall": 1.0,
+      "f1-score": 0.9032258064516129,
+      "support": 14.0
+    },
+    "shopping": {
+      "precision": 0.8666666666666667,
+      "recall": 1.0,
+      "f1-score": 0.9285714285714286,
+      "support": 13.0
+    },
+    "transport": {
+      "precision": 0.8235294117647058,
+      "recall": 1.0,
+      "f1-score": 0.9032258064516129,
+      "support": 14.0
+    },
+    "accuracy": 0.8981481481481481,
+    "macro avg": {
+      "precision": 0.9129336349924585,
+      "recall": 0.8983516483516483,
+      "f1-score": 0.8965060720407845,
+      "support": 108.0
+    },
+    "weighted avg": {
+      "precision": 0.9121780906094631,
+      "recall": 0.8981481481481481,
+      "f1-score": 0.8959750493274725,
+      "support": 108.0
+    }
+  }
+}

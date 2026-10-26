@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -268,3 +269,71 @@ class ItemClaimToggleView(ExpenseGroupBaseMixin, View):
         # Recalcul dynamique des parts
         expense.compute_shares()
         return redirect("expenses:detail", gid=gid, pk=pk)
+
+
+class ExpenseCategorizeView(ExpenseGroupBaseMixin, View):
+    """
+    IA (1) : Endpoint AJAX de suggestion automatique de catégorie (Module M2 - Yahya).
+    Reçoit un titre, exécute le classifieur scikit-learn et renvoie la catégorie adaptée.
+    """
+
+    def get(self, request, gid):
+        title = request.GET.get("title", "").strip()
+        if not title:
+            return JsonResponse({"category_id": None, "category_name": "", "confidence": 0.0})
+
+        from .ml import predict_category_for_group
+
+        group = self.get_group()
+        category, confidence = predict_category_for_group(title, group=group)
+
+        return JsonResponse({
+            "category_id": category.id if category else None,
+            "category_name": category.name if category else "",
+            "confidence": confidence,
+        })
+
+
+class ExpenseNLPExtractView(ExpenseGroupBaseMixin, View):
+    """
+    IA (2) : Saisie en langage naturel (Module M2 - Yahya).
+    Reçoit une phrase utilisateur, appelle call_llm (avec repli local garanti),
+    et renvoie les champs structurés pour pré-remplir le formulaire.
+    """
+
+    def post(self, request, gid):
+        phrase = request.POST.get("phrase", "").strip()
+        if not phrase:
+            return JsonResponse({"error": _("Veuillez saisir une phrase décrivant la dépense.")}, status=400)
+
+        from core.ai import call_llm
+        from .ml import predict_category_for_group
+
+        group = self.get_group()
+        extracted = call_llm(
+            feature="nlp_expense",
+            prompt=f"Extrais les informations de dépense de cette phrase: '{phrase}'. Réponds en JSON avec: title, amount, currency, expense_date, category, participants.",
+            schema={"type": "object"},
+            module="expenses",
+            user=request.user,
+        )
+
+        title = extracted.get("title", "Dépense")
+        amount = extracted.get("amount", 0.0)
+        currency = extracted.get("currency", group.currency)
+        expense_date = extracted.get("expense_date", "")
+        category_name = extracted.get("category", "")
+
+        matched_cat, confidence = predict_category_for_group(title or category_name, group=group)
+
+        return JsonResponse({
+            "success": True,
+            "title": title,
+            "amount": amount,
+            "currency": currency,
+            "expense_date": expense_date,
+            "category_id": matched_cat.id if matched_cat else None,
+            "category_name": matched_cat.name if matched_cat else "",
+            "confidence": confidence,
+        })
+
