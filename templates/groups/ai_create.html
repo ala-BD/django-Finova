@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Créer un groupe avec l'IA · Finova{% endblock %}
+
+{% block content %}
+<article class="auth-card auth-card-wide">
+
+  <div class="ai-header">
+    <span class="ai-badge">✦ IA</span>
+    <h1>Créer un groupe avec l'assistant</h1>
+    <p class="ai-subtitle">
+      Décrivez votre projet en une phrase, l'IA génère le groupe, les catégories et les budgets.
+    </p>
+  </div>
+
+  {# ── Formulaire IA ── #}
+  <form id="ai-form" autocomplete="off">
+    {% csrf_token %}
+    <div class="ai-input-row">
+      <label for="ai-prompt" class="visually-hidden">Description du projet</label>
+      <input
+        id="ai-prompt"
+        name="prompt"
+        type="text"
+        class="ai-input"
+        placeholder="ex : voyage de 5 amis à Djerba en été, budget 2 000 TND"
+        maxlength="300"
+        required
+        autofocus
+      />
+      <button id="ai-submit" type="submit" class="btn btn-primary btn-ai">
+        <span id="ai-btn-text">Générer ✦</span>
+        <span id="ai-spinner" class="spinner" hidden aria-hidden="true"></span>
+      </button>
+    </div>
+  </form>
+
+  {# ── Zone de résultat IA ── #}
+  <div id="ai-result" hidden>
+    <div class="ai-result-card">
+      <div class="ai-result-header">
+        <span class="ai-ok-badge">✓ Groupe généré</span>
+        <strong id="ai-group-name"></strong>
+      </div>
+      <ul id="ai-categories" class="ai-tag-list"></ul>
+      <table id="ai-budgets-table" class="data-table ai-budget-table" hidden>
+        <thead>
+          <tr>
+            <th>Catégorie</th>
+            <th>Budget suggéré</th>
+          </tr>
+        </thead>
+        <tbody id="ai-budgets-body"></tbody>
+      </table>
+      <p id="ai-redirect-msg" class="ai-redirect-msg">
+        Redirection vers le groupe…
+      </p>
+    </div>
+  </div>
+
+  {# ── Zone d'erreur IA ── #}
+  <div id="ai-error" class="form-errors" role="alert" aria-live="assertive" hidden>
+    <p id="ai-error-msg"></p>
+    <button id="ai-retry-btn" class="btn btn-inline" hidden>Réessayer</button>
+  </div>
+
+  {# ── Séparateur ── #}
+  <div class="ai-separator">
+    <span>ou créer manuellement</span>
+  </div>
+
+  {# ── Formulaire manuel (toujours disponible) ── #}
+  <form method="post" action="{% url 'groups:create' %}" novalidate>
+    {% csrf_token %}
+    {% include "includes/form_field.html" with field=form.name %}
+    {% include "includes/form_field.html" with field=form.description %}
+    {% include "includes/form_field.html" with field=form.currency %}
+    {% include "includes/form_field.html" with field=form.default_split_rule %}
+    <button type="submit" class="btn btn-secondary">Créer manuellement</button>
+  </form>
+
+  <p class="auth-alt"><a href="{% url 'groups:list' %}">Annuler</a></p>
+
+</article>
+
+<script>
+(function () {
+  "use strict";
+
+  const form      = document.getElementById("ai-form");
+  const prompt    = document.getElementById("ai-prompt");
+  const submitBtn = document.getElementById("ai-submit");
+  const btnText   = document.getElementById("ai-btn-text");
+  const spinner   = document.getElementById("ai-spinner");
+
+  const resultBox   = document.getElementById("ai-result");
+  const groupName   = document.getElementById("ai-group-name");
+  const catList     = document.getElementById("ai-categories");
+  const budgetTable = document.getElementById("ai-budgets-table");
+  const budgetBody  = document.getElementById("ai-budgets-body");
+  const redirectMsg = document.getElementById("ai-redirect-msg");
+
+  const errorBox    = document.getElementById("ai-error");
+  const errorMsg    = document.getElementById("ai-error-msg");
+  const retryBtn    = document.getElementById("ai-retry-btn");
+
+  function setLoading(loading) {
+    submitBtn.disabled = loading;
+    btnText.hidden     = loading;
+    spinner.hidden     = !loading;
+    prompt.disabled    = loading;
+  }
+
+  function showError(msg, canRetry) {
+    resultBox.hidden = true;
+    errorMsg.textContent = msg;
+    retryBtn.hidden = !canRetry;
+    errorBox.hidden = false;
+  }
+
+  function showResult(data) {
+    errorBox.hidden = true;
+
+    groupName.textContent = data.group_name;
+
+    // Catégories
+    catList.innerHTML = "";
+    (data.categories || []).forEach(function (cat) {
+      const li = document.createElement("li");
+      li.className = "ai-tag";
+      li.textContent = cat;
+      catList.appendChild(li);
+    });
+
+    // Budgets
+    budgetBody.innerHTML = "";
+    if (data.budgets && data.budgets.length > 0) {
+      data.budgets.forEach(function (b) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${b.category}</td><td>${b.amount.toLocaleString("fr-TN")} TND</td>`;
+        budgetBody.appendChild(tr);
+      });
+      budgetTable.hidden = false;
+    }
+
+    resultBox.hidden = false;
+
+    // Redirection automatique après 2.5 s
+    setTimeout(function () {
+      window.location.href = data.redirect;
+    }, 2500);
+  }
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    errorBox.hidden  = true;
+    resultBox.hidden = true;
+    setLoading(true);
+
+    const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
+    const body = new URLSearchParams({ prompt: prompt.value, csrfmiddlewaretoken: csrfToken });
+
+    try {
+      const resp = await fetch("{% url 'groups:ai_create' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": csrfToken, "X-Requested-With": "XMLHttpRequest" },
+        body: body,
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        showResult(data);
+      } else {
+        showError(data.error || "Erreur inconnue.", data.retry === true);
+      }
+    } catch (err) {
+      showError("Erreur réseau. Vérifiez votre connexion.", true);
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  // Bouton "Réessayer" : remet le focus sur le champ
+  retryBtn.addEventListener("click", function () {
+    errorBox.hidden = true;
+    prompt.focus();
+  });
+})();
+</script>
+{% endblock %}

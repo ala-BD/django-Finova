@@ -3,7 +3,10 @@
 {% block content %}
 <div class="page-header">
     <h1>Mes groupes</h1>
-    <a class="btn btn-primary btn-inline" href="{% url 'groups:create' %}">Créer un groupe</a>
+    <span class="actions">
+        <a class="btn btn-primary btn-inline ai-list-btn" href="{% url 'groups:ai_create' %}">✦ Créer avec l'IA</a>
+        <a class="btn btn-inline" href="{% url 'groups:create' %}">Créer manuellement</a>
+    </span>
 </div>
 
 {% if groups %}

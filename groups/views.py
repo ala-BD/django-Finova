@@ -1,10 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views import View
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from core.permissions import GroupAdminRequiredMixin, GroupMemberRequiredMixin
@@ -16,6 +18,7 @@ from .models import Group, Invitation, Membership
 from .services import (
     can_leave,
     default_weight_for,
+    generate_group_from_prompt,
     get_member_balance,
     is_admin,
     preview_split,
@@ -282,3 +285,102 @@ class InvitationAcceptView(LoginRequiredMixin, View):
         if invitation.group.is_archived:
             return "Ce groupe a été archivé."
         return ""
+
+
+# ---------------------------------------------------------------------------
+# Vue IA — création de groupe par description en langage naturel
+# ---------------------------------------------------------------------------
+
+class GroupAICreateView(LoginRequiredMixin, View):
+    """
+    GET  → affiche la page avec le formulaire IA + le formulaire manuel
+    POST → endpoint fetch JSON asynchrone : génère le groupe via LLM
+              et le crée en base dans une transaction atomique.
+
+    Réponse JSON :
+      succès  → {"ok": true,  "redirect": "/groups/<id>/"}
+      erreur  → {"ok": false, "error": "message", "retry": true/false}
+    """
+    template_name = "groups/ai_create.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": GroupForm()})
+
+    def post(self, request):
+        import json
+        from core.ai import LLMError
+
+        prompt = (request.POST.get("prompt") or "").strip()
+        if not prompt:
+            return JsonResponse(
+                {"ok": False, "error": "Décrivez votre projet en une phrase.", "retry": False},
+                status=400,
+            )
+
+        try:
+            group_data = generate_group_from_prompt(prompt, user=request.user)
+        except LLMError as exc:
+            return JsonResponse(
+                {"ok": False, "error": str(exc), "retry": False},
+                status=503,
+            )
+        except ValueError as exc:
+            return JsonResponse(
+                {"ok": False, "error": str(exc), "retry": True},
+                status=422,
+            )
+
+        # Création du groupe + membership admin dans une transaction atomique
+        with transaction.atomic():
+            group = Group.objects.create(
+                name=group_data["name"],
+                description=group_data["description"],
+                currency=group_data["currency"],
+                default_split_rule=group_data["default_split_rule"],
+                created_by=request.user,
+            )
+            Membership.objects.create(
+                group=group,
+                user=request.user,
+                role=Membership.Role.ADMIN,
+                weight=default_weight_for(request.user),
+            )
+            # Contrat M4 : création des catégories et budgets si disponibles
+            _create_budgets_if_available(group, group_data, request.user)
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "redirect": reverse("groups:detail", kwargs={"gid": group.pk}),
+                "group_name": group.name,
+                "categories": group_data["categories"],
+                "budgets": group_data["budgets"],
+            }
+        )
+
+
+def _create_budgets_if_available(group, group_data: dict, user) -> None:
+    """
+    Crée les catégories et budgets générés par l'IA (contrat M4).
+    Si le module budgets n'est pas encore implémenté, ignore silencieusement.
+    """
+    from django.apps import apps
+    try:
+        Category = apps.get_model("budgets", "Category")
+        Budget = apps.get_model("budgets", "Budget")
+    except LookupError:
+        return  # Module M4 pas encore prêt
+
+    budget_map = {b["category"]: b["amount"] for b in group_data.get("budgets", [])}
+    for cat_name in group_data.get("categories", []):
+        try:
+            cat, _ = Category.objects.get_or_create(name=cat_name, group=group)
+            amount = budget_map.get(cat_name)
+            if amount:
+                Budget.objects.get_or_create(
+                    group=group,
+                    category=cat,
+                    defaults={"amount": amount},
+                )
+        except Exception:
+            pass  # Ne jamais bloquer la création du groupe à cause de M4

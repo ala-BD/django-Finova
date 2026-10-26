@@ -322,3 +322,172 @@ class InvitationViewTests(GroupFixturesMixin, TestCase):
         self.assertEqual(
             Invitation.objects.filter(email="linda@example.com").count(), 1
         )
+
+
+# ---------------------------------------------------------------------------
+# Tests IA — génération de groupe par LLM (aucun appel réseau dans les tests)
+# ---------------------------------------------------------------------------
+
+import json as _json
+
+VALID_LLM_RESPONSE = _json.dumps({
+    "name": "Voyage Djerba",
+    "description": "Voyage de 5 amis à Djerba en été",
+    "currency": "TND",
+    "default_split_rule": "equal",
+    "categories": ["Transport", "Hébergement", "Nourriture"],
+    "budgets": [
+        {"category": "Transport", "amount": 500},
+        {"category": "Hébergement", "amount": 1200},
+        {"category": "Nourriture", "amount": 300},
+    ],
+})
+
+INVALID_JSON_RESPONSE = "Voici le groupe que je vous suggère : {non_valide"
+
+TRUNCATED_JSON_RESPONSE = '{"name": "Djerba", "description": "Voyage"'  # JSON tronqué
+
+
+class AIGroupServiceTests(TestCase):
+    """Tests du service generate_group_from_prompt — aucun appel réseau."""
+
+    @patch("core.ai.call_llm", return_value=VALID_LLM_RESPONSE)
+    def test_valid_json_returns_group_data(self, mock_llm):
+        from groups.services import generate_group_from_prompt
+        result = generate_group_from_prompt("voyage de 5 amis à Djerba, budget 2000 TND")
+        self.assertEqual(result["name"], "Voyage Djerba")
+        self.assertEqual(result["currency"], "TND")
+        self.assertEqual(result["default_split_rule"], "equal")
+        self.assertIn("Transport", result["categories"])
+        self.assertEqual(len(result["budgets"]), 3)
+        mock_llm.assert_called_once()
+
+    @patch("core.ai.call_llm", return_value=INVALID_JSON_RESPONSE)
+    def test_invalid_json_raises_value_error_after_retries(self, mock_llm):
+        from groups.services import generate_group_from_prompt
+        with self.assertRaises(ValueError) as ctx:
+            generate_group_from_prompt("test invalide", max_retries=1)
+        self.assertIn("JSON", str(ctx.exception))
+        # 1 essai initial + 1 retry = 2 appels
+        self.assertEqual(mock_llm.call_count, 2)
+
+    @patch("core.ai.call_llm", return_value=TRUNCATED_JSON_RESPONSE)
+    def test_truncated_json_raises_value_error(self, mock_llm):
+        from groups.services import generate_group_from_prompt
+        with self.assertRaises(ValueError):
+            generate_group_from_prompt("test tronqué", max_retries=0)
+
+    @patch("core.ai.call_llm")
+    def test_llm_error_propagates_immediately(self, mock_llm):
+        from core.ai import LLMError
+        from groups.services import generate_group_from_prompt
+        mock_llm.side_effect = LLMError("LLM_API_KEY manquante.")
+        with self.assertRaises(LLMError):
+            generate_group_from_prompt("test erreur réseau")
+        # Pas de retry sur erreur LLM
+        mock_llm.assert_called_once()
+
+    @patch("core.ai.call_llm", return_value=VALID_LLM_RESPONSE)
+    def test_currency_normalised_to_uppercase(self, _mock):
+        from groups.services import _validate_group_json
+        data = _json.loads(VALID_LLM_RESPONSE)
+        data["currency"] = "tnd"
+        result = _validate_group_json(data)
+        self.assertEqual(result["currency"], "TND")
+
+    @patch("core.ai.call_llm", return_value=VALID_LLM_RESPONSE)
+    def test_invalid_rule_falls_back_to_equal(self, _mock):
+        from groups.services import _validate_group_json
+        data = _json.loads(VALID_LLM_RESPONSE)
+        data["default_split_rule"] = "random_rule"
+        result = _validate_group_json(data)
+        self.assertEqual(result["default_split_rule"], "equal")
+
+    @patch("core.ai.call_llm", return_value=VALID_LLM_RESPONSE)
+    def test_name_too_short_raises_value_error(self, _mock):
+        from groups.services import _validate_group_json
+        data = _json.loads(VALID_LLM_RESPONSE)
+        data["name"] = "ab"
+        with self.assertRaises(ValueError) as ctx:
+            _validate_group_json(data)
+        self.assertIn("name", str(ctx.exception))
+
+
+class AIGroupViewTests(GroupFixturesMixin, TestCase):
+    """Tests de la vue GroupAICreateView."""
+
+    def test_get_ai_create_page_requires_login(self):
+        response = self.client.get(reverse("groups:ai_create"))
+        self.assertRedirects(response, f"/accounts/login/?next=/groups/new/ai/")
+
+    def test_get_ai_create_page_ok_for_logged_in(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("groups:ai_create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "assistant")
+
+    @patch("groups.services.generate_group_from_prompt")
+    def test_post_valid_prompt_creates_group_and_returns_json(self, mock_gen):
+        mock_gen.return_value = {
+            "name": "Voyage Djerba",
+            "description": "Vacances en été",
+            "currency": "TND",
+            "default_split_rule": "equal",
+            "categories": ["Transport", "Hébergement"],
+            "budgets": [{"category": "Transport", "amount": 500}],
+        }
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("groups:ai_create"),
+            {"prompt": "voyage de 5 amis à Djerba, budget 2000 TND"},
+        )
+        self.assertEqual(response.status_code, 200)
+        data = _json.loads(response.content)
+        self.assertTrue(data["ok"])
+        self.assertIn("/groups/", data["redirect"])
+        self.assertEqual(data["group_name"], "Voyage Djerba")
+        self.assertTrue(Group.objects.filter(name="Voyage Djerba").exists())
+        # Le créateur est bien admin
+        group = Group.objects.get(name="Voyage Djerba")
+        self.assertTrue(
+            Membership.objects.filter(
+                group=group, user=self.admin, role=Membership.Role.ADMIN
+            ).exists()
+        )
+
+    def test_post_empty_prompt_returns_400(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("groups:ai_create"),
+            {"prompt": "   "},
+        )
+        self.assertEqual(response.status_code, 400)
+        data = _json.loads(response.content)
+        self.assertFalse(data["ok"])
+
+    @patch("groups.services.generate_group_from_prompt")
+    def test_post_llm_error_returns_503(self, mock_gen):
+        from core.ai import LLMError
+        mock_gen.side_effect = LLMError("LLM_API_KEY manquante.")
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("groups:ai_create"),
+            {"prompt": "colocation à Tunis"},
+        )
+        self.assertEqual(response.status_code, 503)
+        data = _json.loads(response.content)
+        self.assertFalse(data["ok"])
+        self.assertFalse(data["retry"])
+
+    @patch("groups.services.generate_group_from_prompt")
+    def test_post_invalid_json_returns_422_with_retry(self, mock_gen):
+        mock_gen.side_effect = ValueError("JSON invalide après 3 tentatives.")
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("groups:ai_create"),
+            {"prompt": "test"},
+        )
+        self.assertEqual(response.status_code, 422)
+        data = _json.loads(response.content)
+        self.assertFalse(data["ok"])
+        self.assertTrue(data["retry"])

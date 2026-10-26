@@ -151,3 +151,148 @@ def can_leave(user, group) -> tuple[bool, str]:
     ):
         return False, "Le dernier admin ne peut pas quitter le groupe."
     return True, ""
+
+
+# ---------------------------------------------------------------------------
+# Partie IA — assistant de création de groupe (M1)
+# ---------------------------------------------------------------------------
+
+import json as _json
+import re as _re
+
+_VALID_CURRENCIES = {c[0] for c in Group.Currency.choices}
+_VALID_RULES = {r[0] for r in Group.SplitRule.choices}
+
+_SYSTEM_PROMPT = """Tu es un assistant financier pour l'application Finova.
+L'utilisateur décrit son projet de groupe de partage de dépenses en une phrase.
+Génère UNIQUEMENT un objet JSON valide (sans texte avant ou après) avec ces champs :
+{
+  "name": "Nom du groupe (3 à 80 caractères)",
+  "description": "Description courte du groupe",
+  "currency": "TND",
+  "default_split_rule": "equal",
+  "categories": ["Catégorie1", "Catégorie2"],
+  "budgets": [{"category": "Catégorie1", "amount": 500}]
+}
+Règles :
+- currency : TND, EUR, USD ou MAD uniquement
+- default_split_rule : equal, by_weight ou by_consumption uniquement
+- categories : liste de 2 à 6 chaînes non vides
+- budgets : liste d'objets {category, amount} où amount > 0
+- Réponds UNIQUEMENT avec le JSON, rien d'autre.
+"""
+
+
+def _extract_json(text: str) -> dict:
+    """Extrait le premier objet JSON valide dans le texte du LLM."""
+    # Cherche un bloc ```json ... ``` ou { ... }
+    match = _re.search(r"```json\s*(\{.*?\})\s*```", text, _re.DOTALL)
+    if not match:
+        match = _re.search(r"(\{.*\})", text, _re.DOTALL)
+    if not match:
+        raise ValueError("Aucun objet JSON trouvé dans la réponse du LLM.")
+    return _json.loads(match.group(1))
+
+
+def _validate_group_json(data: dict) -> dict:
+    """
+    Valide et normalise le JSON retourné par le LLM.
+    Lève ValueError avec un message clair si un champ est invalide.
+    """
+    errors = []
+
+    name = str(data.get("name", "")).strip()
+    if len(name) < 3 or len(name) > 80:
+        errors.append("name doit contenir entre 3 et 80 caractères.")
+
+    currency = str(data.get("currency", "TND")).strip().upper()
+    if currency not in _VALID_CURRENCIES:
+        currency = "TND"
+
+    rule = str(data.get("default_split_rule", "equal")).strip()
+    if rule not in _VALID_RULES:
+        rule = "equal"
+
+    categories = data.get("categories", [])
+    if not isinstance(categories, list) or len(categories) < 1:
+        errors.append("categories doit être une liste non vide.")
+    else:
+        categories = [str(c).strip() for c in categories if str(c).strip()]
+        if not categories:
+            errors.append("categories contient uniquement des chaînes vides.")
+
+    budgets = data.get("budgets", [])
+    if not isinstance(budgets, list):
+        budgets = []
+    valid_budgets = []
+    for b in budgets:
+        if isinstance(b, dict) and "category" in b and "amount" in b:
+            try:
+                amount = float(b["amount"])
+                if amount > 0:
+                    valid_budgets.append({
+                        "category": str(b["category"]).strip(),
+                        "amount": amount,
+                    })
+            except (TypeError, ValueError):
+                pass
+
+    if errors:
+        raise ValueError(" | ".join(errors))
+
+    return {
+        "name": name,
+        "description": str(data.get("description", "")).strip(),
+        "currency": currency,
+        "default_split_rule": rule,
+        "categories": categories,
+        "budgets": valid_budgets,
+    }
+
+
+def generate_group_from_prompt(prompt: str, user=None, max_retries: int = 2) -> dict:
+    """
+    Génère un groupe depuis une description en langage naturel via le LLM.
+
+    - Appelle core.ai.call_llm (Google Gemini)
+    - Extrait et valide le JSON retourné
+    - Réessaie jusqu'à max_retries fois en cas de JSON invalide
+    - Journalise chaque tentative dans AIRequestLog (via call_llm)
+
+    Retourne un dict validé :
+        {name, description, currency, default_split_rule, categories, budgets}
+
+    Lève ValueError si le JSON reste invalide après tous les essais.
+    Lève core.ai.LLMError si l'API est injoignable.
+    """
+    from core.ai import LLMError, call_llm
+
+    full_prompt = f"{_SYSTEM_PROMPT}\n\nDescription du projet : {prompt.strip()}"
+    last_error = None
+
+    for attempt in range(1, max_retries + 2):  # 1 essai + max_retries
+        try:
+            raw_text = call_llm(
+                feature="m1.generate_group",
+                prompt=full_prompt,
+                module="groups",
+                user=user,
+            )
+            data = _extract_json(raw_text)
+            return _validate_group_json(data)
+        except LLMError:
+            raise  # Erreur réseau → on ne réessaie pas
+        except (ValueError, _json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt <= max_retries:
+                # Demande au LLM de corriger son JSON
+                full_prompt = (
+                    f"{_SYSTEM_PROMPT}\n\nDescription du projet : {prompt.strip()}\n\n"
+                    f"Tentative précédente invalide ({exc}). Corrige et renvoie uniquement le JSON."
+                )
+            continue
+
+    raise ValueError(
+        f"Le LLM n'a pas produit un JSON valide après {max_retries + 1} tentatives. "
+        f"Dernière erreur : {last_error}"
+    )
