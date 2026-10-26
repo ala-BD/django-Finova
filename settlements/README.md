@@ -36,6 +36,9 @@ Depuis la fiche d'un groupe : boutons **Soldes** et **Remboursements**.
 | `settlements/<id>/plan/new/`, `edit/`, `delete/` | Payeur, bénéficiaire ou admin ; modification/suppression interdites après un premier paiement |
 | `installments/<id>/pay/` | Payeur seul ; paiement partiel autorisé, jamais au-delà du reste dû |
 | `settlements/<id>/risk/` | POST : recalcul de la prédiction |
+| `settlements/parse/` | POST (fetch, JSON) : phrase → champs du formulaire |
+| `settlements/<id>/plan/suggest/` | POST (fetch, JSON) : échéanciers abordables les moins risqués |
+| `settlements/<id>/plan/pdf/`, `plan/ics/` | Export de l'échéancier (membres du groupe) |
 | `settlements/<id>/reminder/` | POST (fetch, JSON) : relance générée, bénéficiaire seul |
 | `settlements/<id>/reminder/send/` | POST : envoi au payeur via `notify` (M6) |
 
@@ -88,6 +91,66 @@ journalisée dans `AIRequestLog` (`feature = m3.risk`).
 python ml/m3_generate_dataset.py
 python ml/m3_train_risk.py
 ```
+
+### Explication du score (« Pourquoi ce score ? »)
+
+Sur chaque échéancier, chaque variable affiche sa contribution au score : coefficient du modèle
+× valeur standardisée, c'est-à-dire l'écart par rapport à un remboursement moyen du jeu
+d'entraînement. Le tableau est trié par importance, avec une barre et un libellé texte
+(« augmente / diminue le risque »). C'est exact pour une régression logistique : le score
+(log-odds) est la somme de ces contributions et de la constante. Voir `risk.explain`.
+
+## IA (4) · Suggestion de l'échéancier le plus sûr
+
+Sur le formulaire d'échéancier, on indique ce que le payeur peut verser par mois. L'IA évalue
+les 33 échéanciers possibles (2 à 12 échéances × hebdomadaire / bimensuel / mensuel) avec le
+modèle de risque, garde ceux dont la charge mensuelle tient dans ce budget et propose les
+3 moins risqués (bouton « Utiliser » pour remplir le formulaire). Voir `risk.rank_plans`, une
+fonction pure, et `services.suggest_plans`.
+
+Mesure : `python ml/m3_evaluate_suggestion.py`, sur les 120 remboursements du jeu de test
+avec une capacité mensuelle tirée au hasard (remboursement en 1,5 à 8 mois).
+
+| Comparaison | Cas | Risque moyen sans → avec IA | Risque élevé (≥ 50 %) |
+|---|---|---|---|
+| vs « étaler au maximum » (12 mensualités) | 120 | 54 % → **40 %** (−14 pts) | 60 → **37** |
+| vs défaut « 3 mensualités », quand abordable | 31 | 43 % → 42 % (−0,5 pt) | 12 → 12 |
+
+La suggestion n'est jamais pire que ces deux choix. Latence : 0,9 ms en moyenne.
+**Limites à dire à l'oral :** le gain est mesuré avec le modèle lui-même, sur un jeu généré.
+La fréquence n'est pas une variable du modèle : elle ne joue que sur la charge mensuelle.
+L'apport vient surtout du fait d'éviter les échéanciers trop longs.
+
+## IA (3) · Déclarer un remboursement en une phrase
+
+Sur « Déclarer un remboursement » : « J'ai remboursé 30 dinars à Ala hier en espèces » remplit
+le bénéficiaire, le montant et la note. Le LLM renvoie un JSON validé par Django : l'id doit
+être un membre du groupe autre que le payeur, et le montant doit être > 0 et ≤ 1 000 000. Les
+champs manquants ou invalides sont complétés par une analyse locale par règles. Celle-ci gère
+la devise, les décimales à virgule, les dates à ne pas confondre avec un montant, les prénoms
+mal orthographiés (difflib) et le mode de paiement. Sans clé API, seule l'analyse locale tourne.
+Le formulaire est seulement pré-rempli : l'utilisateur valide.
+
+Mesure : `python manage.py m3_evaluate_nl` sur `ml/m3_nl_sentences.csv` (30 phrases étiquetées)
+→ `ml/m3_nl_metrics.json`.
+
+| Mode | Bénéficiaire | Montant | Mode de paiement | Phrase entièrement correcte | Latence |
+|---|---|---|---|---|---|
+| Analyse locale | 100 % | 100 % | 100 % | 100 % | < 1 ms |
+| LLM | non mesuré : `LLM_API_KEY` absente lors de la mesure | | | | |
+
+**Limite à dire à l'oral :** les 30 phrases ont été écrites par le même développeur que les
+règles. Ce score est donc optimiste. Pour une mesure honnête, demander à 2 ou 3 camarades
+d'écrire 20 phrases chacun sans voir le code, puis relancer la commande.
+
+## Fonctionnalités
+
+- **Graphique des soldes** (Chart.js) : barres horizontales vertes (créanciers) et rouges
+  (débiteurs). Le tableau chiffré reste l'alternative accessible. Si le CDN est injoignable,
+  le graphique est masqué et le tableau suffit.
+- **Export de l'échéancier** : PDF (reportlab) avec les parties, les échéances, les retards
+  et le risque ; calendrier `.ics` (RFC 5545) avec une journée par échéance non soldée et un
+  rappel la veille, importable dans Google Agenda ou Outlook.
 
 ## IA (2) · Relance générée
 
