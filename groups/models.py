@@ -130,6 +130,11 @@ class Membership(models.Model):
     def __str__(self):
         return f"{self.user} · {self.group}"
 
+    @property
+    def is_admin(self) -> bool:
+        """Membre actif avec le rôle admin (utilisé par M2 : `membership.is_admin`)."""
+        return self.is_active and self.role == self.Role.ADMIN
+
     def clean(self):
         if self.weight is not None and self.weight <= 0:
             raise ValidationError({"weight": "Le poids doit être strictement positif."})
