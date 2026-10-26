@@ -548,3 +548,180 @@ footer {
     .ai-input-row { flex-direction: column; }
     .btn-ai       { width: 100%; }
 }
+
+/* ── Pages d'erreur et erreurs de formulaire (Imem) ── */
+.error-page {
+    max-width: 36rem;
+    margin: 2rem auto;
+    text-align: center;
+}
+
+.error-code {
+    margin: 0;
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.error-links {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.form-errors-title {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+}
+
+.form-errors ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.form-errors a {
+    color: var(--error);
+    font-weight: 600;
+}
+
+/* ── M3 · Soldes et remboursements (Imem) ── */
+.sub-nav ul {
+    gap: 0.25rem 1.25rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.section {
+    margin-top: 2rem;
+}
+
+.section-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.section-header h2 {
+    margin: 0;
+}
+
+.section-header .actions,
+.section-header form {
+    margin: 0;
+}
+
+.data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.row-me td {
+    background: #f0fdfa;
+}
+
+.status {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #f5f5f4;
+    color: var(--muted);
+}
+
+.status-ok {
+    background: var(--ok-bg);
+    color: var(--ok);
+}
+
+.status-ko {
+    background: var(--error-bg);
+    color: var(--error);
+}
+
+.status-wait {
+    background: #fffbeb;
+    color: #78350f;
+}
+
+.transfer-list {
+    padding-left: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.transfer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.filter-form,
+.inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-bottom: 1rem;
+}
+
+.filter-form .field,
+.inline-form .field {
+    margin-bottom: 0;
+    min-width: 12rem;
+}
+
+progress,
+meter {
+    width: 100%;
+    max-width: 24rem;
+    height: 1rem;
+}
+
+.risk-card {
+    margin-top: 2rem;
+}
+
+.risk-value {
+    font-weight: 700;
+}
+
+.risk-high {
+    color: var(--error);
+}
+
+.risk-low {
+    color: var(--ok);
+}
+
+.features {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+}
+
+.features dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.pagination {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+textarea.input {
+    resize: vertical;
+}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Modifier{% else %}Créer{% endif %} l'échéancier · Finova{% endblock %}
+{% block content %}
+{% include "settlements/_nav.html" %}
+<article class="auth-card auth-card-wide">
+    <h1>{% if editing %}Modifier{% else %}Créer{% endif %} l'échéancier</h1>
+    <p class="muted">
+        Remboursement de {{ settlement.amount }} {{ group.currency }}
+        ({{ settlement.payer.user.get_full_name|default:settlement.payer.user.username }}
+        → {{ settlement.receiver.user.get_full_name|default:settlement.receiver.user.username }}).
+        {% if editing %}Les échéances seront recalculées.{% endif %}
+    </p>
+    {% include "includes/form_errors.html" with form=form %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.installments_count %}
+        {% include "includes/form_field.html" with field=form.frequency %}
+        {% include "includes/form_field.html" with field=form.start_date %}
+        <button type="submit" class="btn btn-primary">Enregistrer l'échéancier</button>
+    </form>
+    <p class="auth-alt"><a href="{% url 'settlements:detail' group.pk settlement.pk %}">Annuler</a></p>
+</article>
+{% endblock %}

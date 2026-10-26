@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Soldes · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+{% include "settlements/_nav.html" %}
+<div class="page-header">
+    <div>
+        <h1>Soldes du groupe</h1>
+        <p>Solde net = payé − dû + remboursements confirmés. Montants en {{ group.currency }}.</p>
+    </div>
+</div>
+
+{% if not expenses_integrated %}
+    <p class="message message-info">
+        Le module Dépenses (M2) n'est pas encore branché : les soldes ne tiennent compte
+        que des remboursements confirmés.
+    </p>
+{% endif %}
+
+<section>
+    <h2>Solde de chaque membre</h2>
+    <table class="data-table">
+        <caption class="visually-hidden">Solde net par membre</caption>
+        <thead>
+            <tr>
+                <th scope="col">Membre</th>
+                <th scope="col" class="num">Solde</th>
+                <th scope="col">Situation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr{% if row.membership.pk == me.pk %} class="row-me"{% endif %}>
+                    <td>
+                        {{ row.membership.user.get_full_name|default:row.membership.user.username }}
+                        {% if row.membership.pk == me.pk %}<span class="muted">(vous)</span>{% endif %}
+                    </td>
+                    <td class="num">{{ row.balance }}</td>
+                    <td>
+                        {% if row.balance > 0 %}
+                            <span class="status status-ok">Créancier : on lui doit {{ row.magnitude }}</span>
+                        {% elif row.balance < 0 %}
+                            <span class="status status-ko">Débiteur : doit {{ row.magnitude }}</span>
+                        {% else %}
+                            <span class="status">À l'équilibre</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="section">
+    <h2>Virements simplifiés</h2>
+    {% if transfers %}
+        <p>{{ transfers|length }} virement{{ transfers|length|pluralize }} suffi{{ transfers|length|pluralize:"t,sent" }} pour tout solder (au plus n − 1 pour n membres).</p>
+        <ol class="transfer-list">
+            {% for t in transfers %}
+                <li class="card transfer">
+                    <span>
+                        <strong>{{ t.debtor.user.get_full_name|default:t.debtor.user.username }}</strong>
+                        verse
+                        <strong>{{ t.amount }} {{ group.currency }}</strong>
+                        à
+                        <strong>{{ t.creditor.user.get_full_name|default:t.creditor.user.username }}</strong>
+                    </span>
+                    {% if t.debtor.pk == me.pk %}
+                        <a class="btn btn-primary btn-inline" href="{% url 'settlements:create' group.pk %}?receiver={{ t.creditor.pk }}&amp;amount={{ t.amount|stringformat:'s' }}">Rembourser</a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <p class="empty">Tout le monde est à l'équilibre : aucun virement nécessaire.</p>
+    {% endif %}
+</section>
+{% endblock %}

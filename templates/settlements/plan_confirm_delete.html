@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Supprimer l'échéancier · Finova{% endblock %}
+{% block content %}
+<article class="auth-card">
+    <h1>Supprimer l'échéancier</h1>
+    <p>
+        L'échéancier de {{ plan.installments_count }} échéances sera supprimé.
+        Le remboursement de {{ plan.total_amount }} {{ group.currency }} reste en attente.
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Supprimer</button>
+    </form>
+    <p class="auth-alt"><a href="{% url 'settlements:detail' group.pk plan.settlement_id %}">Annuler</a></p>
+</article>
+{% endblock %}

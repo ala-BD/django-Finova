@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Déclarer un remboursement · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+{% include "settlements/_nav.html" %}
+<article class="auth-card auth-card-wide">
+    <h1>Déclarer un remboursement</h1>
+    <p class="muted">Vous êtes le payeur. Le bénéficiaire devra confirmer la réception.</p>
+    {% include "includes/form_errors.html" with form=form %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.receiver %}
+        {% include "includes/form_field.html" with field=form.amount %}
+        {% include "includes/form_field.html" with field=form.note %}
+        <button type="submit" class="btn btn-primary">Enregistrer le remboursement</button>
+    </form>
+    <p class="auth-alt"><a href="{% url 'settlements:list' group.pk %}">Annuler</a></p>
+</article>
+{% endblock %}
