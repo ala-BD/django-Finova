@@ -18,6 +18,14 @@
 
 <section>
     <h2>Solde de chaque membre</h2>
+    <figure class="chart-box">
+        <div class="chart-canvas">
+            <canvas id="balances-chart" role="img"
+                    aria-label="Graphique des soldes : barres vertes pour les créanciers, rouges pour les débiteurs. Les mêmes valeurs figurent dans le tableau ci-dessous."></canvas>
+        </div>
+        <figcaption class="muted">À droite de zéro, on doit de l'argent au membre ; à gauche, il en doit. Détail chiffré dans le tableau.</figcaption>
+    </figure>
+    {{ chart_data|json_script:"balances-data" }}
     <table class="data-table">
         <caption class="visually-hidden">Solde net par membre</caption>
         <thead>
@@ -74,4 +82,44 @@
         <p class="empty">Tout le monde est à l'équilibre : aucun virement nécessaire.</p>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(() => {
+    const canvas = document.getElementById("balances-chart");
+    if (!window.Chart) {  // CDN injoignable : le tableau reste disponible
+        canvas.closest("figure").hidden = true;
+        return;
+    }
+    const data = JSON.parse(document.getElementById("balances-data").textContent);
+    const css = getComputedStyle(document.documentElement);
+    const green = css.getPropertyValue("--ok").trim() || "#14532d";
+    const red = css.getPropertyValue("--error").trim() || "#991b1b";
+    const format = (v) => `${v.toLocaleString("fr-FR", { minimumFractionDigits: 3 })} ${data.currency}`;
+    canvas.closest(".chart-canvas").style.height =`${Math.max(140, data.labels.length * 48)}px`;
+    new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.values,
+                backgroundColor: data.values.map((v) => (v >= 0 ? green : red)),
+                borderRadius: 4,
+            }],
+        },
+        options: {
+            indexAxis: "y",
+            maintainAspectRatio: false,
+            animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : undefined,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => (ctx.raw >= 0 ? "Créancier : " : "Débiteur : ") + format(Math.abs(ctx.raw)) } },
+            },
+            scales: { x: { ticks: { callback: (v) => `${v} ${data.currency}` } } },
+        },
+    });
+})();
+</script>
 {% endblock %}

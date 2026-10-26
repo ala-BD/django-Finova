@@ -725,3 +725,91 @@ meter {
 textarea.input {
     resize: vertical;
 }
+
+/* ── M3 · IA et exports (Imem) ── */
+.ai-box {
+    margin: 1rem 0 1.5rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius);
+    background: #f8fafc;
+}
+
+.ai-box h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.05rem;
+}
+
+.ai-box .btn-ai .spinner {
+    border-color: rgba(0, 0, 0, 0.2);
+    border-top-color: var(--accent);
+}
+
+.suggest-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.suggestion {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.explain-title {
+    margin: 1rem 0 0.25rem;
+    font-size: 1rem;
+}
+
+.explain-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.explain-list li {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1.4fr) 2fr minmax(8rem, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.explain-bar {
+    height: 0.65rem;
+    width: var(--share);
+    min-width: 2px;
+    border-radius: 999px;
+}
+
+.explain-up {
+    background: var(--error);
+}
+
+.explain-down {
+    background: var(--ok);
+}
+
+.explain-effect {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.chart-box {
+    margin: 0 0 1rem;
+    position: relative;
+    max-width: 40rem;
+}
+
+@media (max-width: 40rem) {
+    .explain-list li {
+        grid-template-columns: 1fr;
+        gap: 0.2rem;
+    }
+}
