@@ -1,7 +1,7 @@
 from django import template
 from django.utils.safestring import mark_safe
 
-from automation.markdown import render_markdown
+from core.markdown import render_markdown
 
 register = template.Library()
 

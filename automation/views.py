@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from automation.forms import RecurringExpenseForm, ReminderRuleForm
-from automation.markdown import render_markdown
+from core.markdown import render_markdown
 from automation.models import ChatMessage, Notification, RecurringExpense, ReminderRule
 from automation.services import (
     AssistantRequestError,
