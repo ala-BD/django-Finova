@@ -12,12 +12,8 @@ from django.conf import settings
 
 from core.models import AIRequestLog
 
-# Modèle Gemini utilisé pour toutes les générations
-_GEMINI_MODEL = "gemini-2.0-flash"
-_GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{_GEMINI_MODEL}:generateContent"
-)
+# Modèles Gemini disponibles (ordre de préférence, avec fallback en cas de surcharge 503)
+_GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"]
 
 
 class LLMError(Exception):
@@ -48,7 +44,7 @@ def call_llm(feature: str, prompt: str, schema=None, module: str = "", user=None
                 "LLM_API_KEY manquante. Définissez la variable d'environnement LLM_API_KEY."
             )
 
-        timeout = getattr(settings, "LLM_TIMEOUT_SECONDS", 20)
+        timeout = getattr(settings, "LLM_TIMEOUT_SECONDS", 40)
 
         # Corps de la requête Gemini
         body = json.dumps({
@@ -59,27 +55,38 @@ def call_llm(feature: str, prompt: str, schema=None, module: str = "", user=None
             },
         }).encode("utf-8")
 
-        url = f"{_GEMINI_URL}?key={urllib.parse.quote(api_key)}"
-        req = urllib.request.Request(
-            url,
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "x-goog-api-key": api_key,
-            },
-            method="POST",
-        )
+        raw = None
+        last_exc = None
+        for model_name in _GEMINI_MODELS:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={urllib.parse.quote(api_key)}"
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                },
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    raw = json.loads(resp.read().decode("utf-8"))
+                    break
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")[:200]
+                last_exc = LLMError(f"Gemini HTTP {exc.code}: {detail}")
+                if exc.code in (503, 404, 429):
+                    continue  # essayer le modèle de secours
+                raise last_exc from exc
+            except urllib.error.URLError as exc:
+                raise LLMError(f"Gemini réseau: {exc.reason}") from exc
+            except TimeoutError as exc:
+                raise LLMError("Gemini timeout — réessayez dans quelques secondes.") from exc
 
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                raw = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:200]
-            raise LLMError(f"Gemini HTTP {exc.code}: {detail}") from exc
-        except urllib.error.URLError as exc:
-            raise LLMError(f"Gemini réseau: {exc.reason}") from exc
-        except TimeoutError as exc:
-            raise LLMError("Gemini timeout — réessayez dans quelques secondes.") from exc
+        if raw is None:
+            if last_exc:
+                raise last_exc
+            raise LLMError("Aucun modèle Gemini n'a pu répondre.")
 
         try:
             response_text = raw["candidates"][0]["content"]["parts"][0]["text"]

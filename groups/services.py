@@ -165,7 +165,15 @@ _VALID_RULES = {r[0] for r in Group.SplitRule.choices}
 
 _SYSTEM_PROMPT = """Tu es un assistant financier pour l'application Finova.
 L'utilisateur décrit son projet de groupe de partage de dépenses en une phrase.
-Génère UNIQUEMENT un objet JSON valide (sans texte avant ou après) avec ces champs :
+
+AVANT tout, évalue si la description est un vrai projet de partage de dépenses :
+- Projets VALIDES : voyage, colocation, événement, repas entre amis, camping, fête, mariage, sport collectif, location de voiture, activité de groupe, etc.
+- Projets INVALIDES : mots sans sens ("test", "bonjour", "azerty"), sujets sans lien avec des dépenses partagées, phrases trop courtes ou absurdes.
+
+Si la description N'EST PAS un projet de partage de dépenses valide, réponds UNIQUEMENT :
+{"error": "La description ne correspond pas à un projet de partage de dépenses. Décrivez un voyage, une colocation, un événement ou toute activité impliquant des dépenses communes."}
+
+Si la description EST valide, génère UNIQUEMENT un objet JSON avec ces champs :
 {
   "name": "Nom du groupe (3 à 80 caractères)",
   "description": "Description courte du groupe",
@@ -174,7 +182,7 @@ Génère UNIQUEMENT un objet JSON valide (sans texte avant ou après) avec ces c
   "categories": ["Catégorie1", "Catégorie2"],
   "budgets": [{"category": "Catégorie1", "amount": 500}]
 }
-Règles :
+Règles pour les projets valides :
 - currency : TND, EUR, USD ou MAD uniquement
 - default_split_rule : equal, by_weight ou by_consumption uniquement
 - categories : liste de 2 à 6 chaînes non vides
@@ -197,8 +205,13 @@ def _extract_json(text: str) -> dict:
 def _validate_group_json(data: dict) -> dict:
     """
     Valide et normalise le JSON retourné par le LLM.
-    Lève ValueError avec un message clair si un champ est invalide.
+    - Si le LLM retourne {"error": "..."}, lève ValueError avec ce message (rejet sémantique).
+    - Lève ValueError avec un message clair si un champ est invalide.
     """
+    # Rejet sémantique : le LLM a décidé que le prompt n'est pas un projet valide
+    if "error" in data:
+        raise ValueError(str(data["error"]))
+
     errors = []
 
     name = str(data.get("name", "")).strip()
