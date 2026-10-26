@@ -139,7 +139,15 @@ Mesure : `python manage.py m3_evaluate_nl` sur `ml/m3_nl_sentences.csv` (30 phra
 | Mode | Bénéficiaire | Montant | Mode de paiement | Phrase entièrement correcte | Latence |
 |---|---|---|---|---|---|
 | Analyse locale | 100 % | 100 % | 100 % | 100 % | < 1 ms |
-| LLM | non mesuré : `LLM_API_KEY` absente lors de la mesure | | | | |
+| LLM (Gemini, + règles pour les montants avec devise) | 100 % | 100 % | 97 % | 97 % | 735 ms (p95 970 ms) |
+
+Améliorations guidées par la mesure réelle, à raconter à l'oral :
+- Le LLM écrivait le mode de paiement librement (« cash », « D17 ») : mode 47 %. Il choisit
+  désormais dans la liste fermée de l'application, validée par Django : mode 97 %.
+- Gemini a lu « 47.300 dinars » comme 47 300 au lieu de 47,3 (millimes tunisiens). Un montant
+  écrit à côté d'une devise est donc lu par les règles : montant 100 %.
+- L'erreur restante, « j'ai versé 300 dt », est classée « Virement » par le LLM. C'est discutable
+  en français, et elle est conservée telle quelle.
 
 **Limite à dire à l'oral :** les 30 phrases ont été écrites par le même développeur que les
 règles. Ce score est donc optimiste. Pour une mesure honnête, demander à 2 ou 3 camarades
