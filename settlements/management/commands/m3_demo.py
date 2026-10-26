@@ -3,7 +3,7 @@
     python manage.py m3_demo            # crée le groupe de démo s'il n'existe pas
     python manage.py m3_demo --reset    # le recrée
 
-Comptes : demo_ala, demo_yahya, demo_linda — mot de passe affiché à la fin.
+Comptes : demo_ala, demo_yahya, demo_linda, demo_zahra, demo_wassim — mot de passe affiché à la fin.
 """
 
 from datetime import timedelta
@@ -48,6 +48,8 @@ class Command(BaseCommand):
             ("demo_ala", "Ala", "student"),
             ("demo_yahya", "Yahya", "active"),
             ("demo_linda", "Linda", "senior"),
+            ("demo_zahra", "Zahra", "active"),
+            ("demo_wassim", "Wassim", "student"),
         ]:
             user, _ = User.objects.get_or_create(
                 username=username,
@@ -60,17 +62,23 @@ class Command(BaseCommand):
 
         group = Group.objects.create(name=GROUP_NAME, created_by=users["Ala"],
                                      description="Données générées pour la démo de M3.")
+        weights = {"student": Decimal("1"), "active": Decimal("2"), "senior": Decimal("3")}
         m = {
             name: Membership.objects.create(
                 group=group, user=user,
                 role=Membership.Role.ADMIN if name == "Ala" else Membership.Role.MEMBER,
-                weight=Decimal(str(index + 1)),
+                weight=weights[user.income_profile],
             )
-            for index, (name, user) in enumerate(users.items())
+            for name, user in users.items()
         }
 
-        # 1. Remboursements confirmés : ils déterminent les soldes (M2 non encore branché)
-        for payer, receiver, amount in [("Linda", "Ala", "40"), ("Yahya", "Linda", "25.500")]:
+        # 1. Remboursements confirmés : ils déterminent les soldes (M2 non encore branché).
+        #    Ils forment des cycles : 7 dettes brutes → 4 virements après simplification.
+        for payer, receiver, amount in [
+            ("Linda", "Ala", "40"), ("Yahya", "Linda", "25.500"), ("Zahra", "Yahya", "30"),
+            ("Wassim", "Zahra", "18"), ("Ala", "Wassim", "12"), ("Yahya", "Ala", "20"),
+            ("Zahra", "Linda", "15"),
+        ]:
             settlement = services.create_settlement(group, m[payer], m[receiver], Decimal(amount))
             services.confirm_settlement(settlement, users[receiver])
 
@@ -92,7 +100,7 @@ class Command(BaseCommand):
 
     def print_access(self, group):
         self.stdout.write(
-            f"Connexion : demo_ala / demo_yahya / demo_linda — mot de passe : {PASSWORD}\n"
+            f"Connexion : demo_ala, demo_yahya, demo_linda, demo_zahra, demo_wassim — mot de passe : {PASSWORD}\n"
             f"Soldes : http://127.0.0.1:8000/groups/{group.pk}/balances/\n"
             f"Remboursements : http://127.0.0.1:8000/groups/{group.pk}/settlements/"
         )
