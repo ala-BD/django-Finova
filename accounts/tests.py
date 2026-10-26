@@ -90,3 +90,99 @@ class LoginLogoutTests(TestCase):
         self.assertRedirects(response, self.login_url, target_status_code=200)
         self.assertFalse(response.wsgi_request.user.is_authenticated)
         self.assertContains(response, "Vous êtes déconnecté.")
+
+
+class RegisterViewTests(TestCase):
+    def setUp(self):
+        self.register_url = reverse("accounts:register")
+        self.valid_payload = {
+            "first_name": "Yahya",
+            "last_name": "Test",
+            "username": "yahya",
+            "email": "yahya@example.com",
+            "password1": "SecretP@ssw0rd2026!",
+            "password2": "SecretP@ssw0rd2026!",
+        }
+
+    def test_register_page_renders_accessible_form(self):
+        """En GET : le formulaire est présent, accessible, avec labels et CSRF.
+        L'aria-describedby n'apparaît qu'après validation (voir le test POST ci-dessous).
+        """
+        response = self.client.get(self.register_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<form")
+        self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertContains(response, 'for="id_email"')
+        self.assertContains(response, 'for="id_password1"')
+        self.assertContains(response, 'autocomplete="email"')
+        self.assertContains(response, 'autocomplete="new-password"')
+
+    def test_register_invalid_post_injects_aria_attributes(self):
+        """En POST invalide : full_clean() injecte aria-invalid et aria-describedby."""
+        payload = {**self.valid_payload, "email": "pas-un-email"}
+        response = self.client.post(self.register_url, payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'aria-invalid="true"')
+        self.assertContains(response, 'aria-describedby="id_email-error"')
+
+    def test_register_success_creates_user_and_redirects(self):
+        response = self.client.post(self.register_url, self.valid_payload)
+        self.assertRedirects(response, reverse("accounts:login"))
+        User = get_user_model()
+        user = User.objects.filter(username=self.valid_payload["username"]).first()
+        self.assertIsNotNone(user)
+        self.assertNotEqual(user.password, self.valid_payload["password1"])
+        self.assertTrue(user.check_password(self.valid_payload["password1"]))
+
+    def test_register_duplicate_email_rejected(self):
+        User = get_user_model()
+        User.objects.create_user(
+            username="existing_user",
+            email="yahya@example.com",
+            password="ExistingPassword!123",
+        )
+        initial_count = User.objects.count()
+        payload = self.valid_payload.copy()
+        payload["email"] = "yahya@example.com"
+        response = self.client.post(self.register_url, payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "email",
+            "Cette adresse e-mail est déjà utilisée.",
+        )
+        self.assertEqual(User.objects.count(), initial_count)
+
+    def test_register_password_mismatch_rejected(self):
+        User = get_user_model()
+        initial_count = User.objects.count()
+        payload = self.valid_payload.copy()
+        payload["password2"] = "DifferentPassword!456"
+        response = self.client.post(self.register_url, payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(User.objects.count(), initial_count)
+
+    def test_register_weak_password_rejected(self):
+        User = get_user_model()
+        initial_count = User.objects.count()
+        payload = self.valid_payload.copy()
+        payload["password1"] = "12345678"
+        payload["password2"] = "12345678"
+        response = self.client.post(self.register_url, payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(User.objects.count(), initial_count)
+
+    def test_register_redirects_authenticated_user(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="logged_in_user",
+            email="loggedin@example.com",
+            password="StrongPassword!123",
+        )
+        self.client.force_login(user)
+        response = self.client.get(self.register_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("accounts:login"), target_status_code=302)
+
+
+
