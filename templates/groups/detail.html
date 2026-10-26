@@ -12,6 +12,7 @@
             <a class="btn btn-inline" href="{% url 'groups:invite' group.pk %}">Inviter</a>
             <a class="btn btn-inline btn-danger" href="{% url 'groups:delete' group.pk %}">Archiver</a>
         {% endif %}
+        <a class="btn btn-inline" href="{% url 'expenses:list' gid=group.pk %}">Dépenses</a>
         <a class="btn btn-inline" href="{% url 'settlements:balances' group.pk %}">Soldes</a>
         <a class="btn btn-inline" href="{% url 'settlements:list' group.pk %}">Remboursements</a>
         <a class="btn btn-inline" href="{% url 'groups:leave' group.pk %}">Quitter</a>

@@ -11,7 +11,7 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("groups/", include("groups.urls")),
     path("invitations/", include("groups.invitation_urls")),
-    path("expenses/", include("expenses.urls")),
+    path("groups/<int:gid>/expenses/", include("expenses.urls")),
     path("groups/<int:gid>/", include("settlements.urls")),
     path("budgets/", include("budgets.urls")),
     path("analytics/", include("analytics.urls")),
