@@ -12,7 +12,8 @@ python manage.py m3_demo          # groupe de démo (DEBUG uniquement), --reset 
 python manage.py runserver
 ```
 
-Comptes de démo : `demo_ala`, `demo_yahya`, `demo_linda`, mot de passe `finova-demo-2026`.
+Comptes de démo : `demo_ala`, `demo_yahya`, `demo_linda`, `demo_zahra`, `demo_wassim`, mot de
+passe `finova-demo-2026`.
 Depuis la fiche d'un groupe : boutons **Soldes** et **Remboursements**.
 
 ## Entités (CRUD Settlement ↔ RepaymentPlan)
@@ -36,6 +37,7 @@ Depuis la fiche d'un groupe : boutons **Soldes** et **Remboursements**.
 | `settlements/<id>/plan/new/`, `edit/`, `delete/` | Payeur, bénéficiaire ou admin ; modification/suppression interdites après un premier paiement |
 | `installments/<id>/pay/` | Payeur seul ; paiement partiel autorisé, jamais au-delà du reste dû |
 | `settlements/<id>/risk/` | POST : recalcul de la prédiction |
+| `settlements/<id>/simulate/` | Simulateur interactif du risque (calcul dans le navigateur) |
 | `settlements/parse/` | POST (fetch, JSON) : phrase → champs du formulaire |
 | `settlements/<id>/plan/suggest/` | POST (fetch, JSON) : échéanciers abordables les moins risqués |
 | `settlements/<id>/plan/pdf/`, `plan/ics/` | Export de l'échéancier (membres du groupe) |
@@ -142,6 +144,41 @@ Mesure : `python manage.py m3_evaluate_nl` sur `ml/m3_nl_sentences.csv` (30 phra
 **Limite à dire à l'oral :** les 30 phrases ont été écrites par le même développeur que les
 règles. Ce score est donc optimiste. Pour une mesure honnête, demander à 2 ou 3 camarades
 d'écrire 20 phrases chacun sans voir le code, puis relancer la commande.
+
+## IA interactive (5) · Simulateur « et si ? » du risque
+
+`settlements/<id>/simulate/`, accessible depuis la carte « Risque de retard » de chaque
+remboursement, est ouvert à tous les membres. Des curseurs règlent le nombre d'échéances, la
+fréquence, le montant, ainsi que le profil du payeur : retards passés, délai de confirmation,
+ancienneté. À chaque mouvement, la jauge, le verdict, l'écart avec le risque enregistré,
+l'effort mensuel, les barres « Pourquoi ce score ? » et la courbe « risque selon le nombre
+d'échéances » se mettent à jour. On peut cliquer un point de la courbe pour le choisir.
+« Appliquer cet échéancier » ouvre le formulaire pré-rempli ; il n'apparaît que pour le payeur,
+le bénéficiaire ou un admin, et seulement avant tout paiement.
+
+- **Pourquoi c'est instantané :** le serveur exporte les paramètres du modèle
+  (`risk.model_params()` : moyennes, écarts-types, coefficients, constante). Le navigateur
+  calcule p = 1 / (1 + e^−(b + Σ coef × (x − moyenne) / écart)) : aucune requête ni clé API.
+- **Pourquoi c'est fiable :** un test compare ce calcul à `predict_proba` de scikit-learn sur
+  50 cas aléatoires, à 10⁻⁵ près. Des contrôles jsdom exécutent le script sur la page rendue :
+  le simulateur démarre exactement sur le risque enregistré.
+- **Accessibilité :** chaque curseur a un libellé, une valeur lisible (`aria-valuetext`) et une
+  annonce `aria-live` du risque, sans spam pendant qu'on fait glisser. Mise en page en une
+  colonne sur mobile.
+
+## Graphe interactif des dettes
+
+Sur la page des soldes, le graphe SVG (sans bibliothèque) place les membres en cercle : vert
+pour les créanciers, rouge pour les débiteurs. Une flèche signifie « doit à », et son épaisseur
+est proportionnelle au montant. Une bascule passe des **dettes brutes** (paire par paire :
+parts de dépenses M2 et remboursements confirmés, compensées dans les deux sens) aux
+**virements simplifiés**. Dans la démo, on passe de 7 dettes à 4 virements (≤ n − 1). Cliquer
+un membre (ou Tab puis Entrée) affiche ce qu'il doit et reçoit, et estompe le reste. Une version
+texte liste les mêmes flèches pour les lecteurs d'écran.
+
+Garanties testées : la somme des dettes brutes d'un membre est égale à son solde, et la
+simplification conserve le solde de chacun avec au plus n − 1 virements (`services.pairwise_debts`,
+`services.debt_graph`).
 
 ## Fonctionnalités
 
