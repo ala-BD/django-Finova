@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mes budgets · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+<h1>Mes budgets</h1>
+<p class="lead">Suivi de {{ month|date:"F Y" }} pour chacun de vos groupes.</p>
+
+{% if rows %}
+    <ul class="card-grid" role="list">
+        {% for row in rows %}
+            <li class="card">
+                <h2 class="card-title"><a href="{% url 'budgets:list' row.group.pk %}">{{ row.group.name }}</a></h2>
+                <p>{{ row.budget_count }} budget{{ row.budget_count|pluralize }} ce mois-ci.</p>
+                {% if row.alerts %}
+                    <p class="status status-warning"><span aria-hidden="true">⚠</span> {{ row.alerts }} budget{{ row.alerts|pluralize }} à surveiller</p>
+                {% else %}
+                    <p class="status status-ok"><span aria-hidden="true">✓</span> Aucune alerte</p>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-state">
+        <p>Vous n'êtes membre d'aucun groupe pour l'instant.</p>
+        <p><a href="{% url 'groups:list' %}">Voir les groupes</a></p>
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Supprimer une catégorie · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<article class="form-card">
+    <h1>Supprimer la catégorie « {{ category.name }} » ?</h1>
+    <ul>
+        <li>{{ expense_count }} dépense{{ expense_count|pluralize }} rattachée{{ expense_count|pluralize }}.</li>
+        <li>{{ budget_count }} budget{{ budget_count|pluralize }} lié{{ budget_count|pluralize }}, supprimé{{ budget_count|pluralize }} avec la catégorie.</li>
+    </ul>
+
+    {% if form.non_field_errors %}
+        <div class="form-errors" role="alert">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if expense_count %}
+            {% include "includes/form_field.html" with field=form.reassign_to %}
+        {% endif %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">Supprimer la catégorie</button>
+            <a href="{% url 'budgets:categories' group.pk %}">Annuler</a>
+        </div>
+    </form>
+</article>
+{% endblock %}

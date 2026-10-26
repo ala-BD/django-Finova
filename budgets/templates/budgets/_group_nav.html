@@ -1,0 +1,8 @@
+<p class="breadcrumb"><a href="{% url 'budgets:overview' %}">Mes budgets</a> <span aria-hidden="true">›</span> {{ group.name }}</p>
+<nav class="subnav" aria-label="Budgets du groupe {{ group.name }}">
+    <ul>
+        <li><a href="{% url 'budgets:list' group.pk %}" {% if active_tab == 'budgets' %}aria-current="page"{% endif %}>Budgets</a></li>
+        <li><a href="{% url 'budgets:categories' group.pk %}" {% if active_tab == 'categories' %}aria-current="page"{% endif %}>Catégories</a></li>
+        <li><a href="{% url 'budgets:simulate' group.pk %}" {% if active_tab == 'simulate' %}aria-current="page"{% endif %}>Simulateur « et si ? »</a></li>
+    </ul>
+</nav>

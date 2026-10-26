@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load static budget_tags %}
+{% block title %}Supprimer un budget · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<article class="form-card">
+    <h1>Supprimer le budget « {{ object.category.name }} » de {{ object.month|date:"F Y" }} ?</h1>
+    <p>La limite de {{ object.limit_amount|money:group.currency }} sera supprimée. <strong>Les dépenses ne sont pas affectées.</strong></p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">Supprimer le budget</button>
+            <a href="{% url 'budgets:list' group.pk %}?month={{ object.month|date:'Y-m' }}">Annuler</a>
+        </div>
+    </form>
+</article>
+{% endblock %}

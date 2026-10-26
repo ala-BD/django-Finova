@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Catégories · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<div class="page-header">
+    <h1>Catégories</h1>
+    {% if is_group_admin %}
+        <a class="btn btn-secondary" href="{% url 'budgets:category_create' group.pk %}">Nouvelle catégorie</a>
+    {% endif %}
+</div>
+
+{% if categories %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <caption class="visually-hidden">Catégories du groupe {{ group.name }}</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Catégorie</th>
+                    <th scope="col" class="num">Dépenses</th>
+                    <th scope="col" class="num">Budgets</th>
+                    {% if is_group_admin %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in categories %}
+                    <tr>
+                        <th scope="row">
+                            <span class="swatch" style="background: {{ category.color }}" aria-hidden="true"></span>
+                            {{ category }}
+                        </th>
+                        <td class="num">{{ category.expense_count }}</td>
+                        <td class="num">{{ category.budget_count }}</td>
+                        {% if is_group_admin %}
+                            <td class="row-actions">
+                                <a href="{% url 'budgets:category_update' group.pk category.pk %}">Modifier<span class="visually-hidden"> {{ category.name }}</span></a>
+                                <a href="{% url 'budgets:category_delete' group.pk category.pk %}" class="link-danger">Supprimer<span class="visually-hidden"> {{ category.name }}</span></a>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="empty-state">
+        <p>Aucune catégorie pour l'instant.</p>
+    </div>
+{% endif %}
+{% endblock %}

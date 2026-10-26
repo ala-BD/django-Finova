@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static budget_tags %}
+{% block title %}Simulateur · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<h1>Simulateur « et si ? »</h1>
+<p class="lead">Si je réduis une catégorie de quelques pourcents, en combien de temps j'atteins mon objectif d'épargne ?</p>
+
+<div class="split">
+    <form method="get" class="form-card" id="simulate-form" novalidate
+          data-url="{% url 'budgets:simulate' group.pk %}" data-currency="{{ group.currency }}">
+        {% include "includes/form_field.html" with field=form.category %}
+        {% include "includes/form_field.html" with field=form.reduction_percent %}
+        {% include "includes/form_field.html" with field=form.savings_goal %}
+        <button type="submit" class="btn btn-primary">Simuler</button>
+    </form>
+
+    <section class="result-card" id="simulate-result" aria-live="polite" aria-busy="false" aria-labelledby="simulate-result-title">
+        <h2 id="simulate-result-title">Résultat</h2>
+        <div id="simulate-result-body">
+            {% if result %}
+                {% include "budgets/_simulation_result.html" %}
+            {% else %}
+                <p class="muted">Choisissez une catégorie, un pourcentage et un objectif, puis lancez la simulation.</p>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/budgets.js' %}"></script>{% endblock %}

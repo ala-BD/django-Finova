@@ -1,0 +1,579 @@
+/* M4 · Budgets et simulateur — s'appuie sur les variables de style.css */
+
+:root {
+    --warning: #854d0e;
+    --warning-bg: #fefce8;
+    --warning-border: #fde047;
+    --track: #e7e5e4;
+}
+
+.lead {
+    color: var(--muted);
+    margin-top: -0.5rem;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+.breadcrumb {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+/* Sous-navigation du groupe */
+.subnav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.subnav a {
+    display: inline-block;
+    padding: 0.55rem 0.9rem;
+    text-decoration: none;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+}
+
+.subnav a:hover {
+    color: var(--accent);
+}
+
+.subnav a[aria-current="page"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    text-decoration: none;
+}
+
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.page-header h1 {
+    margin: 0.25rem 0;
+}
+
+/* Boutons complémentaires */
+.btn-secondary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btn-secondary:hover {
+    background: var(--accent-hover);
+    color: #fff;
+}
+
+.btn-ghost {
+    background: var(--surface);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-ghost:hover {
+    background: #f0fdfa;
+}
+
+.btn-danger {
+    background: var(--error);
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: #7f1d1d;
+}
+
+.link-danger {
+    color: var(--error);
+}
+
+/* Navigation par mois */
+.month-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    align-items: center;
+    justify-content: space-between;
+    margin: 1rem 0 1.5rem;
+}
+
+.month-picker {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.month-picker label {
+    font-weight: 600;
+}
+
+.month-picker .input {
+    width: auto;
+}
+
+.month-picker .btn {
+    padding: 0.5rem 0.9rem;
+}
+
+/* Résumé */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1rem;
+    margin: 0 0 1.5rem;
+}
+
+.summary-grid div {
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.summary-grid dt {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.summary-grid dd {
+    margin: 0.25rem 0 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+}
+
+/* Cartes de budget */
+.budget-list,
+.card-grid,
+.chip-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.budget-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 1rem;
+}
+
+.budget-card,
+.card,
+.form-card,
+.result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+}
+
+.budget-card {
+    border-left: 6px solid var(--category-color, var(--accent));
+}
+
+.budget-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.budget-title {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.status {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    margin: 0;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.status-ok {
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-color: #86efac;
+}
+
+.status-warning {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border-color: var(--warning-border);
+}
+
+.status-over {
+    background: var(--error-bg);
+    color: var(--error);
+    border-color: #fecaca;
+}
+
+/* Barre de progression : la couleur n'est jamais la seule information */
+.progress {
+    position: relative;
+    height: 0.9rem;
+    margin: 1rem 0 0.6rem;
+    background: var(--track);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--ok);
+    border-radius: 999px;
+}
+
+.level-warning .progress-fill {
+    background: #a16207;
+}
+
+.level-over .progress-fill {
+    background: var(--error);
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent 0 6px,
+        rgba(255, 255, 255, 0.25) 6px 12px
+    );
+}
+
+.progress-mark {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 80%;
+    width: 2px;
+    background: var(--text);
+    opacity: 0.45;
+}
+
+.budget-figures {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.budget-percent {
+    color: var(--muted);
+}
+
+.budget-meta {
+    margin: 0.25rem 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0 0.45rem;
+    border-radius: 0.35rem;
+    background: var(--track);
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.tag-ai {
+    background: #ede9fe;
+    color: #4c1d95;
+}
+
+.forecast {
+    margin: 0.85rem 0 0;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.5rem;
+    background: #f5f3ff;
+    font-size: 0.95rem;
+}
+
+.forecast-over {
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+}
+
+.forecast-method {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.card-actions,
+.row-actions {
+    display: flex;
+    gap: 1rem;
+    margin: 0.85rem 0 0;
+}
+
+.row-actions {
+    margin: 0;
+    justify-content: flex-end;
+}
+
+/* Vue d'ensemble */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1rem;
+}
+
+.card-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+}
+
+/* Catégories sans budget */
+.unbudgeted {
+    margin-top: 2rem;
+}
+
+.unbudgeted h2 {
+    font-size: 1.05rem;
+}
+
+.chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.chip {
+    display: inline-block;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    text-decoration: none;
+}
+
+a.chip:hover {
+    border-color: var(--accent);
+}
+
+/* Tableau des catégories */
+.table-wrap {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table tbody tr:last-child th,
+.data-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.data-table thead th {
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.data-table tbody th {
+    font-weight: 600;
+}
+
+.swatch {
+    display: inline-block;
+    width: 0.85rem;
+    height: 0.85rem;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    vertical-align: -0.05rem;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Formulaires */
+.form-card {
+    max-width: 34rem;
+}
+
+.form-card h1 {
+    margin-top: 0;
+    font-size: 1.5rem;
+}
+
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1.25rem;
+}
+
+.form-actions .btn-primary {
+    width: auto;
+}
+
+.field-checkbox {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.6rem;
+    align-items: center;
+}
+
+.field-checkbox label {
+    margin: 0;
+}
+
+.field-checkbox .help {
+    grid-column: 2;
+    margin: 0;
+}
+
+input[type="checkbox"].input {
+    width: 1.15rem;
+    height: 1.15rem;
+    padding: 0;
+}
+
+input[type="color"].input {
+    width: 4.5rem;
+    height: 2.6rem;
+    padding: 0.2rem;
+}
+
+.ai-helper {
+    margin: -0.25rem 0 1.25rem;
+}
+
+.ai-output:not(:empty) {
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.5rem;
+    background: #f5f3ff;
+}
+
+.ai-output[aria-busy="true"]::before {
+    content: "";
+    display: inline-block;
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-right: 0.5rem;
+    border: 2px solid #4c1d95;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.1rem;
+    animation: spin 0.8s linear infinite;
+}
+
+.ai-source {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+/* Simulateur */
+.split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.split .form-card {
+    max-width: none;
+}
+
+.result-card h2 {
+    margin-top: 0;
+    font-size: 1.15rem;
+}
+
+.result-card[aria-busy="true"] {
+    opacity: 0.6;
+}
+
+.big-figure {
+    margin: 0.25rem 0;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.result-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 1rem 0 0.5rem;
+}
+
+.result-list div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed var(--border);
+}
+
+.result-list dt {
+    color: var(--muted);
+}
+
+.result-list dd {
+    margin: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.empty-state {
+    padding: 2rem 1.25rem;
+    text-align: center;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-output[aria-busy="true"]::before {
+        animation: none;
+    }
+}
+
+@media (max-width: 40rem) {
+    .month-nav {
+        justify-content: center;
+    }
+
+    .page-header .btn {
+        width: 100%;
+        text-align: center;
+    }
+}

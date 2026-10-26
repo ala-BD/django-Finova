@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load static budget_tags %}
+{% block title %}Budgets {{ month|date:"F Y" }} · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<div class="page-header">
+    <h1>Budgets de {{ month|date:"F Y" }}</h1>
+    {% if is_group_admin %}
+        <a class="btn btn-secondary" href="{% url 'budgets:create' group.pk %}?month={{ month|date:'Y-m' }}">Nouveau budget</a>
+    {% endif %}
+</div>
+
+<nav class="month-nav" aria-label="Changer de mois">
+    <a href="?month={{ previous_month|date:'Y-m' }}" rel="prev"><span aria-hidden="true">←</span> {{ previous_month|date:"F Y" }}</a>
+    <form method="get" class="month-picker">
+        <label for="month-picker">Mois</label>
+        <input type="month" id="month-picker" name="month" value="{{ month|date:'Y-m' }}" class="input">
+        <button type="submit" class="btn btn-ghost">Afficher</button>
+    </form>
+    <a href="?month={{ next_month|date:'Y-m' }}" rel="next">{{ next_month|date:"F Y" }} <span aria-hidden="true">→</span></a>
+</nav>
+
+{% if statuses %}
+    <section aria-labelledby="summary-title">
+        <h2 id="summary-title" class="visually-hidden">Résumé du mois</h2>
+        <dl class="summary-grid">
+            <div><dt>Total budgété</dt><dd>{{ total_limit|money:group.currency }}</dd></div>
+            <div><dt>Total dépensé</dt><dd>{{ total_consumed|money:group.currency }}</dd></div>
+            <div><dt>Budgets suivis</dt><dd>{{ statuses|length }}</dd></div>
+        </dl>
+    </section>
+
+    <ul class="budget-list" role="list">
+        {% for s in statuses %}
+            <li class="budget-card level-{{ s.level }}" style="--category-color: {{ s.category.color }}">
+                <div class="budget-card-head">
+                    <h2 class="budget-title" id="budget-{{ s.budget.pk }}">
+                        {% if s.category.icon %}<span aria-hidden="true">{{ s.category.icon }}</span>{% endif %}
+                        {{ s.category.name }}
+                    </h2>
+                    <p class="status status-{{ s.level }}">
+                        <span aria-hidden="true">{% if s.level == 'over' %}✕{% elif s.level == 'warning' %}⚠{% else %}✓{% endif %}</span>
+                        {{ s.level|level_label }}
+                    </p>
+                </div>
+
+                <div class="progress" role="progressbar"
+                     aria-labelledby="budget-{{ s.budget.pk }}"
+                     aria-valuemin="0" aria-valuemax="100"
+                     aria-valuenow="{{ s.percent|bar_width }}"
+                     aria-valuetext="{{ s.percent|percent }} consommé">
+                    <span class="progress-fill" style="width: {{ s.percent|bar_width }}%"></span>
+                    <span class="progress-mark" aria-hidden="true"></span>
+                </div>
+
+                <p class="budget-figures">
+                    <strong>{{ s.consumed|money:group.currency }}</strong>
+                    sur {{ s.effective_limit|money:group.currency }}
+                    <span class="budget-percent">({{ s.percent|percent }})</span>
+                </p>
+                <p class="budget-meta">
+                    {% if s.remaining >= 0 %}Reste {{ s.remaining|money:group.currency }}{% else %}Dépassement de {{ s.remaining|negate|money:group.currency }}{% endif %}
+                    {% if s.carried_over %} · dont {{ s.carried_over|money:group.currency }} reportés du mois précédent{% endif %}
+                    {% if s.budget.carry_over %} · <span class="tag">report activé</span>{% endif %}
+                </p>
+
+                {% if s.forecast %}
+                    <p class="forecast{% if s.forecast.likely_overrun %} forecast-over{% endif %}">
+                        <span class="tag tag-ai">IA</span>
+                        Prévision de fin de mois : <strong>{{ s.forecast.predicted_total|money:group.currency }}</strong>
+                        {% if s.forecast.likely_overrun %}
+                            — dépassement probable de {{ s.forecast.overrun_amount|money:group.currency }}
+                        {% else %}
+                            — dans la limite
+                        {% endif %}
+                        <span class="forecast-method">({{ s.forecast.method }})</span>
+                    </p>
+                {% endif %}
+
+                {% if is_group_admin %}
+                    <p class="card-actions">
+                        <a href="{% url 'budgets:update' group.pk s.budget.pk %}">Modifier<span class="visually-hidden"> le budget {{ s.category.name }}</span></a>
+                        <a href="{% url 'budgets:delete' group.pk s.budget.pk %}" class="link-danger">Supprimer<span class="visually-hidden"> le budget {{ s.category.name }}</span></a>
+                    </p>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-state">
+        <p>Aucun budget défini pour {{ month|date:"F Y" }}.</p>
+        {% if is_group_admin %}
+            <p><a class="btn btn-secondary" href="{% url 'budgets:create' group.pk %}?month={{ month|date:'Y-m' }}">Définir un premier budget</a></p>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% if unbudgeted_categories %}
+    <section class="unbudgeted" aria-labelledby="unbudgeted-title">
+        <h2 id="unbudgeted-title">Catégories sans budget ce mois-ci</h2>
+        <ul class="chip-list" role="list">
+            {% for category in unbudgeted_categories %}
+                <li>
+                    {% if is_group_admin %}
+                        <a class="chip" href="{% url 'budgets:create' group.pk %}?month={{ month|date:'Y-m' }}&amp;category={{ category.pk }}">
+                            {{ category }}<span class="visually-hidden"> : définir un budget</span> <span aria-hidden="true">+</span>
+                        </a>
+                    {% else %}
+                        <span class="chip">{{ category }}</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}
+{% endblock %}

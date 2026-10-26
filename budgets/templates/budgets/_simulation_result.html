@@ -1,0 +1,14 @@
+{% load budget_tags %}
+{% if result.months_needed %}
+    <p class="big-figure">{{ result.months_needed }} mois</p>
+    <p>pour atteindre {{ result.savings_goal|money:group.currency }}, vers {{ result.reached_on|date:"F Y" }}.</p>
+{% else %}
+    <p class="big-figure">—</p>
+    <p>Pas d'économie possible : aucune dépense connue dans cette catégorie, ou réduction nulle.</p>
+{% endif %}
+<dl class="result-list">
+    <div><dt>Dépense moyenne actuelle</dt><dd>{{ result.monthly_average|money:group.currency }} / mois</dd></div>
+    <div><dt>Après réduction de {{ result.reduction_percent|percent }}</dt><dd>{{ result.new_monthly_spend|money:group.currency }} / mois</dd></div>
+    <div><dt>Économie mensuelle</dt><dd>{{ result.monthly_saving|money:group.currency }}</dd></div>
+</dl>
+<p class="help">Moyenne calculée sur {{ result.months_of_history }} mois d'historique.</p>

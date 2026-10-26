@@ -12,7 +12,7 @@ urlpatterns = [
     path("groups/", include("groups.urls")),
     path("expenses/", include("expenses.urls")),
     path("settlements/", include("settlements.urls")),
-    path("budgets/", include("budgets.urls")),
+    path("", include("budgets.urls")),
     path("analytics/", include("analytics.urls")),
     path("automation/", include("automation.urls")),
 ]
