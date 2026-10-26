@@ -1,16 +1,12 @@
-import logging
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import CreateView, DeleteView, FormView, ListView, TemplateView, UpdateView
 
@@ -22,7 +18,6 @@ from . import services
 from .forms import BudgetForm, CategoryDeleteForm, CategoryForm, SimulationForm
 from .models import Budget, Category
 
-logger = logging.getLogger(__name__)
 
 
 def decimal_str(value, places=3):
@@ -347,7 +342,7 @@ class BudgetInsightApiView(GroupMemberRequiredMixin, View):
 
 
 def report_month(request):
-    return services.parse_month(request.GET.get("month") or request.POST.get("month")) or services.current_month()
+    return services.parse_month(request.GET.get("month")) or services.current_month()
 
 
 class BudgetReportPdfView(GroupMemberRequiredMixin, View):
@@ -360,32 +355,3 @@ class BudgetReportPdfView(GroupMemberRequiredMixin, View):
         response = HttpResponse(build_budget_report(group, month, user=request.user), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{report_filename(group, month)}"'
         return response
-
-
-class BudgetReportEmailView(GroupMemberRequiredMixin, View):
-    """Envoie le rapport PDF par email à l'adresse saisie (par défaut celle du profil). POST + CSRF."""
-
-    http_method_names = ["post"]
-
-    def post(self, request, *args, **kwargs):
-        from .reports import email_budget_report
-
-        group, month = self.get_group(), report_month(request)
-        back = request.POST.get("next") or reverse("budgets:list", kwargs={"gid": group.pk})
-        if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
-            back = reverse("budgets:list", kwargs={"gid": group.pk})
-        address = (request.POST.get("email") or request.user.email or "").strip()
-        try:
-            validate_email(address)
-        except ValidationError:
-            messages.error(request, "Saisissez une adresse email valide pour recevoir le rapport.")
-            return redirect(back)
-        try:
-            email_budget_report(group, month, request.user, to=address)
-        except Exception:
-            logger.exception("Envoi du rapport PDF à %s impossible.", address)
-            messages.error(request, "L'email n'a pas pu être envoyé. Téléchargez le PDF en attendant.")
-        else:
-            messages.success(request, f"Rapport envoyé à {address}.")
-        return redirect(back)
-

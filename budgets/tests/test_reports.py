@@ -1,10 +1,9 @@
-"""Rapport PDF des budgets et envoi par email."""
+"""Rapport PDF des budgets."""
 
 from datetime import date
 from unittest import mock
 
-from django.core import mail
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from budgets.reports import build_budget_report, report_filename
@@ -48,7 +47,6 @@ class ReportViewsTests(TestCase):
         category = make_category(self.group, "Restaurants")
         make_budget(category, OCTOBER)
         self.pdf_url = reverse("budgets:report_pdf", kwargs={"gid": self.group.pk}) + "?month=2026-10"
-        self.email_url = reverse("budgets:report_email", kwargs={"gid": self.group.pk})
 
     def test_member_downloads_pdf(self):
         self.client.force_login(self.member)
@@ -59,56 +57,12 @@ class ReportViewsTests(TestCase):
         self.assertIn("2026-10.pdf", response["Content-Disposition"])
         self.assertTrue(response.content.startswith(b"%PDF"))
 
-    def test_member_receives_pdf_by_email(self):
-        self.client.force_login(self.member)
-        response = self.client.post(self.email_url, {"month": "2026-10"}, follow=True)
-        self.assertContains(response, "Rapport envoyé à yahya@example.com")
-        self.assertEqual(len(mail.outbox), 1)
-        message = mail.outbox[0]
-        self.assertEqual(message.to, ["yahya@example.com"])
-        self.assertIn("octobre 2026", message.subject)
-        name, content, mimetype = message.attachments[0]
-        self.assertEqual(mimetype, "application/pdf")
-        self.assertTrue(content.startswith(b"%PDF"))
-
-    def test_pdf_sent_to_typed_address(self):
-        self.client.force_login(self.member)
-        response = self.client.post(self.email_url, {"month": "2026-10", "email": "  linda.perso@gmail.com "}, follow=True)
-        self.assertContains(response, "Rapport envoyé à linda.perso@gmail.com")
-        self.assertEqual(mail.outbox[0].to, ["linda.perso@gmail.com"])
-
-    def test_invalid_or_missing_address_gets_error(self):
-        self.client.force_login(self.member)
-        response = self.client.post(self.email_url, {"email": "pas-un-email"}, follow=True)
-        self.assertContains(response, "Saisissez une adresse email valide")
-        self.member.email = ""
-        self.member.save()
-        response = self.client.post(self.email_url, follow=True)
-        self.assertContains(response, "Saisissez une adresse email valide")
-        self.assertEqual(len(mail.outbox), 0)
-
-    def test_email_requires_post_and_csrf(self):
-        self.client.force_login(self.member)
-        self.assertEqual(self.client.get(self.email_url).status_code, 405)
-        client = Client(enforce_csrf_checks=True)
-        client.force_login(self.member)
-        self.assertEqual(client.post(self.email_url).status_code, 403)
-        self.assertEqual(len(mail.outbox), 0)
-
-    def test_external_redirect_is_ignored(self):
-        self.client.force_login(self.member)
-        response = self.client.post(self.email_url, {"next": "https://evil.example/"})
-        self.assertEqual(response["Location"], reverse("budgets:list", kwargs={"gid": self.group.pk}))
-
     def test_outsider_refused(self):
         self.client.force_login(make_user())
         self.assertEqual(self.client.get(self.pdf_url).status_code, 403)
-        self.assertEqual(self.client.post(self.email_url).status_code, 403)
-        self.assertEqual(len(mail.outbox), 0)
 
     def test_buttons_shown_on_budget_page(self):
         self.client.force_login(self.member)
         response = self.client.get(reverse("budgets:list", kwargs={"gid": self.group.pk}))
-        self.assertContains(response, "Télécharger le PDF")
-        self.assertContains(response, "Recevoir le PDF à")
-        self.assertContains(response, 'value="yahya@example.com"')
+        self.assertContains(response, "Télécharger le rapport PDF")
+        self.assertNotContains(response, "report/email")

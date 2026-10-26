@@ -621,7 +621,7 @@ input[type="color"].input {
     }
 }
 
-/* Rapport PDF et email */
+/* Rapport PDF */
 .report-actions {
     display: flex;
     flex-wrap: wrap;
@@ -630,25 +630,3 @@ input[type="color"].input {
     margin: 0 0 1.5rem;
 }
 
-.report-actions form {
-    margin: 0;
-}
-
-.report-actions .help {
-    margin: 0;
-}
-
-.report-email-form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.report-email-form label {
-    font-weight: 600;
-}
-
-.report-email-form .input {
-    width: min(100%, 18rem);
-}

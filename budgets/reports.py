@@ -1,5 +1,5 @@
 """
-Rapport mensuel des budgets en PDF (reportlab) et envoi par email.
+Rapport mensuel des budgets en PDF (reportlab).
 
 Le PDF reprend, pour un groupe et un mois : la consommation de chaque budget
 et, pour le mois en cours, l'analyse IA (prévision, fourchette, risque).
@@ -11,8 +11,6 @@ from datetime import date
 from decimal import Decimal
 from io import BytesIO
 
-from django.conf import settings
-from django.core.mail import EmailMessage
 from django.utils import timezone
 from django.utils.formats import date_format
 
@@ -152,22 +150,3 @@ def build_budget_report(group, month: date, user=None) -> bytes:
 
     doc.build(story)
     return buffer.getvalue()
-
-
-def email_budget_report(group, month: date, user, to: str | None = None) -> None:
-    """Envoie le rapport PDF en pièce jointe (backend email de Django) à `to`, ou à l'adresse du profil."""
-    month = services.first_of_month(month)
-    pdf = build_budget_report(group, month, user=user)
-    label = date_format(month, "F Y")
-    message = EmailMessage(
-        subject=f"Finova · budgets de {label} ({group.name})",
-        body=(
-            f"Bonjour {user.get_short_name() or user.username},\n\n"
-            f"Vous trouverez en pièce jointe le rapport des budgets du groupe « {group.name} » pour {label}.\n\n"
-            "— Finova"
-        ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[to or user.email],
-    )
-    message.attach(report_filename(group, month), pdf, "application/pdf")
-    message.send(fail_silently=False)

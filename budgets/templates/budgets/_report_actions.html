@@ -1,14 +1,5 @@
-<div class="report-actions" role="group" aria-label="Rapport de {{ month|date:'F Y' }}">
+<div class="report-actions">
     <a class="btn btn-ghost" href="{% url 'budgets:report_pdf' group.pk %}?month={{ month|date:'Y-m' }}" download>
-        <span aria-hidden="true">⬇</span> Télécharger le PDF
+        <span aria-hidden="true">⬇</span> Télécharger le rapport PDF
     </a>
-    <form method="post" action="{% url 'budgets:report_email' group.pk %}" class="report-email-form">
-        {% csrf_token %}
-        <input type="hidden" name="month" value="{{ month|date:'Y-m' }}">
-        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-        <label for="report-email">Recevoir le PDF à</label>
-        <input type="email" id="report-email" name="email" class="input" required
-               value="{{ user.email }}" placeholder="vous@exemple.com" autocomplete="email">
-        <button type="submit" class="btn btn-ghost"><span aria-hidden="true">✉</span> Envoyer</button>
-    </form>
 </div>
