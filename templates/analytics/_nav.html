@@ -1,0 +1,10 @@
+{% with current=request.resolver_match.url_name %}
+<nav class="subnav" aria-label="Analytics">
+    <ul>
+        <li><a href="{% url 'analytics:dashboard' %}" {% if current == 'dashboard' %}aria-current="page"{% endif %}>Tableau de bord</a></li>
+        <li><a href="{% url 'analytics:filter_list' %}" {% if current == 'filter_list' %}aria-current="page"{% endif %}>Filtres sauvegardés</a></li>
+        <li><a href="{% url 'analytics:report_list' %}" {% if current == 'report_list' %}aria-current="page"{% endif %}>Rapports</a></li>
+        <li><a href="{% url 'analytics:anomaly_list' %}" {% if current == 'anomaly_list' %}aria-current="page"{% endif %}>Anomalies et doublons</a></li>
+    </ul>
+</nav>
+{% endwith %}

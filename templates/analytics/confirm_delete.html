@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Confirmer la suppression · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<section class="card form-card">
+    <h1>Supprimer {{ kind }} « {{ object }} » ?</h1>
+    <p>Cette action est définitive.</p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="actions">
+            <button type="submit" class="btn btn-danger">Supprimer</button>
+            <a class="btn btn-secondary" href="{{ cancel_url }}">Annuler</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

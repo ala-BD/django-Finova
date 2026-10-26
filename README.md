@@ -65,3 +65,17 @@ Exemple : `feat(m1): invitation par jeton expirant`
 ## Variables d'environnement
 
 Voir `.env.example`. Ne jamais committer `.env`.
+
+## M5 · Analytics et rapports (Zahra)
+
+URL : `/analytics/` (tableau de bord), `/analytics/filters/`, `/analytics/reports/`, `/analytics/anomalies/`.
+
+- **Données** : `analytics/datasource.py` lit les dépenses via `expenses.services.get_group_expenses`.
+  Tant que M1/M2 ne sont pas livrés, un jeu de démonstration généré est utilisé et signalé à l'écran
+  (`ANALYTICS_DEMO_DATA=false` pour le désactiver).
+- **IA** : anomalies (score robuste MAD par catégorie, confirmé par libellé), doublons (difflib ≥ 0,8),
+  résumé narratif du mois par LLM à partir des seuls agrégats, chiffres vérifiés, repli sur un modèle de texte.
+- **Taux de change** : cache 24 h → API (`EXCHANGE_RATE_API_URL`) → derniers taux connus → taux fixes.
+- **Métriques** : `python manage.py analytics_evaluate` (écrit `ml/m5_metrics.json`).
+- **Tests et couverture** : `python manage.py test analytics` ;
+  `coverage run manage.py test && coverage report` (configuration dans `.coveragerc`).

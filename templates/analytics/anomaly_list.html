@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static analytics_tags %}
+{% block title %}Anomalies et doublons · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<div class="page-head">
+    <h1>Anomalies et doublons</h1>
+    <form method="post" action="{% url 'analytics:anomaly_scan' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-accent">Analyser mes dépenses</button>
+    </form>
+</div>
+{% include "analytics/_demo_notice.html" %}
+
+<p class="help">
+    Anomalie : montant très supérieur à la médiane de sa catégorie (score robuste MAD &gt; 3,5).
+    Doublon : même payeur, même montant, à un jour d'écart au plus, libellé semblable à 80 % ou plus.
+</p>
+
+<nav class="tabs" aria-label="Filtrer les signalements">
+    <a href="?statut=a-revoir" {% if status == "a-revoir" %}aria-current="page"{% endif %}>À revoir ({{ counts.to_review }})</a>
+    <a href="?statut=revues" {% if status == "revues" %}aria-current="page"{% endif %}>Revues ({{ counts.reviewed }})</a>
+    <a href="?statut=toutes" {% if status == "toutes" %}aria-current="page"{% endif %}>Toutes</a>
+</nav>
+
+{% if flags %}
+    <div class="table-scroll card">
+        <table>
+            <caption class="visually-hidden">Signalements</caption>
+            <thead>
+                <tr><th scope="col">Type</th><th scope="col">Dépense</th><th scope="col">Date</th><th scope="col" class="num">Montant</th><th scope="col">Pourquoi</th><th scope="col" class="num">Score</th><th scope="col">État</th></tr>
+            </thead>
+            <tbody>
+                {% for flag in flags %}
+                    <tr>
+                        <td><span class="tag tag-{{ flag.kind }}">{{ flag.get_kind_display }}</span></td>
+                        <th scope="row">{{ flag.expense_label }}</th>
+                        <td>{{ flag.expense_date|date:"d/m/Y" }}</td>
+                        <td class="num">{{ flag.expense_amount|money:flag.currency }}</td>
+                        <td>{{ flag.reason }}</td>
+                        <td class="num">{{ flag.score|number:2 }}</td>
+                        <td>
+                            <form method="post" action="{% url 'analytics:anomaly_review' flag.pk %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="statut" value="{{ status }}">
+                                <button type="submit" class="btn btn-small {% if flag.reviewed %}btn-secondary{% else %}btn-accent{% endif %}">
+                                    {% if flag.reviewed %}Remettre à revoir{% else %}Marquer comme revue{% endif %}
+                                    <span class="visually-hidden"> : {{ flag.expense_label }}</span>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <section class="card"><p>Aucun signalement dans cette liste. Lancez l'analyse pour détecter les anomalies et les doublons.</p></section>
+{% endif %}
+{% endblock %}

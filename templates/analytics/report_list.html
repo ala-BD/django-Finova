@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Rapports · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<div class="page-head">
+    <h1>Rapports</h1>
+    <a class="btn btn-accent" href="{% url 'analytics:report_create' %}">Nouveau rapport</a>
+</div>
+
+{% if reports %}
+    <div class="table-scroll card">
+        <table>
+            <caption class="visually-hidden">Vos rapports</caption>
+            <thead>
+                <tr><th scope="col">Titre</th><th scope="col">Filtre</th><th scope="col">Format</th><th scope="col">Généré le</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                    <tr>
+                        <th scope="row"><a href="{% url 'analytics:report_detail' report.pk %}">{{ report.title }}</a></th>
+                        <td>{{ report.saved_filter.name|default:"Toutes les dépenses" }}</td>
+                        <td>{{ report.get_format_display }}</td>
+                        <td>{{ report.generated_at|date:"d/m/Y H:i" }}</td>
+                        <td class="row-actions">
+                            <a href="{% url 'analytics:report_download' report.pk %}">Télécharger<span class="visually-hidden"> « {{ report.title }} »</span></a>
+                            <a href="{% url 'analytics:report_delete' report.pk %}">Supprimer<span class="visually-hidden"> « {{ report.title }} »</span></a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if is_paginated %}
+        <nav class="pagination" aria-label="Pagination des rapports">
+            {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Page précédente</a>{% endif %}
+            <span>Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Page suivante</a>{% endif %}
+        </nav>
+    {% endif %}
+{% else %}
+    <section class="card"><p>Aucun rapport pour le moment.</p></section>
+{% endif %}
+{% endblock %}

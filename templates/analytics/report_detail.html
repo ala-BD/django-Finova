@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ report.title }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<article class="card">
+    <h1>{{ report.title }}</h1>
+    <dl class="meta">
+        <dt>Format</dt><dd>{{ report.get_format_display }}</dd>
+        <dt>Filtre</dt><dd>{{ report.saved_filter.name|default:"Toutes les dépenses" }} ({{ description }})</dd>
+        <dt>Généré le</dt><dd>{{ report.generated_at|date:"d/m/Y à H:i" }}</dd>
+    </dl>
+    {% if report.narrative_summary %}
+        <h2>Résumé du mois</h2>
+        <p>{{ report.narrative_summary }}</p>
+    {% endif %}
+    <div class="actions">
+        <a class="btn btn-accent" href="{% url 'analytics:report_download' report.pk %}">Télécharger ({{ report.get_format_display }})</a>
+        <a class="btn btn-secondary" href="{% url 'analytics:report_delete' report.pk %}">Supprimer</a>
+        <a class="btn btn-secondary" href="{% url 'analytics:report_list' %}">Retour aux rapports</a>
+    </div>
+</article>
+{% endblock %}

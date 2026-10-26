@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Filtres sauvegardés · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<div class="page-head">
+    <h1>Filtres sauvegardés</h1>
+    <a class="btn btn-accent" href="{% url 'analytics:filter_create' %}">Nouveau filtre</a>
+</div>
+
+{% if rows %}
+    <div class="table-scroll card">
+        <table>
+            <caption class="visually-hidden">Vos filtres sauvegardés</caption>
+            <thead>
+                <tr><th scope="col">Nom</th><th scope="col">Critères</th><th scope="col">Créé le</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+            </thead>
+            <tbody>
+                {% for filter, description in rows %}
+                    <tr>
+                        <th scope="row">{{ filter.name }}</th>
+                        <td>{{ description }}</td>
+                        <td>{{ filter.created_at|date:"d/m/Y" }}</td>
+                        <td class="row-actions">
+                            <a href="{% url 'analytics:filter_apply' filter.pk %}">Appliquer<span class="visually-hidden"> « {{ filter.name }} »</span></a>
+                            <a href="{% url 'analytics:report_create' %}?filtre={{ filter.pk }}">Exporter<span class="visually-hidden"> « {{ filter.name }} »</span></a>
+                            <a href="{% url 'analytics:filter_edit' filter.pk %}">Modifier<span class="visually-hidden"> « {{ filter.name }} »</span></a>
+                            <a href="{% url 'analytics:filter_delete' filter.pk %}">Supprimer<span class="visually-hidden"> « {{ filter.name }} »</span></a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <section class="card">
+        <p>Aucun filtre sauvegardé. Réglez les filtres du <a href="{% url 'analytics:dashboard' %}">tableau de bord</a>, puis cliquez sur « Enregistrer ce filtre ».</p>
+    </section>
+{% endif %}
+{% endblock %}

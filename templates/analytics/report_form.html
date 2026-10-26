@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Nouveau rapport · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<section class="card form-card">
+    <h1>Nouveau rapport</h1>
+    <form method="post" novalidate data-busy-on-submit>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.title %}
+        {% include "includes/form_field.html" with field=form.saved_filter %}
+        <fieldset class="field" {% if form.format.errors %}aria-describedby="format-error"{% endif %}>
+            <legend>{{ form.format.label }}</legend>
+            {% for radio in form.format %}
+                <label class="radio">{{ radio.tag }} {{ radio.choice_label }}</label>
+            {% endfor %}
+            {% if form.format.errors %}<p class="field-error" id="format-error" role="alert">{{ form.format.errors.0 }}</p>{% endif %}
+        </fieldset>
+        <div class="actions">
+            <button type="submit" class="btn btn-accent">Générer le rapport</button>
+            <a class="btn btn-secondary" href="{% url 'analytics:report_list' %}">Annuler</a>
+        </div>
+        <p class="loading" hidden role="status"><span class="spinner" aria-hidden="true"></span> Génération en cours…</p>
+    </form>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelectorAll("form[data-busy-on-submit]").forEach((form) => {
+    form.addEventListener("submit", () => {
+        form.setAttribute("aria-busy", "true");
+        form.querySelector(".loading").hidden = false;
+        form.querySelector("button[type=submit]").disabled = true;
+    });
+});
+</script>
+{% endblock %}

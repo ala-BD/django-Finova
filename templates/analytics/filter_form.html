@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if instance %}Modifier le filtre{% else %}Nouveau filtre{% endif %} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<section class="card form-card">
+    <h1>{% if instance %}Modifier « {{ instance.name }} »{% else %}Nouveau filtre{% endif %}</h1>
+    {% if not instance %}
+        <p class="help">Donnez un nom à ce filtre pour le retrouver dans « Filtres sauvegardés ». Les critères repris du tableau de bord restent modifiables.</p>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+        <div class="form-errors" role="alert" aria-live="assertive">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.name %}
+        <fieldset>
+            <legend>Critères</legend>
+            <div class="filter-grid">
+                {% include "includes/form_field.html" with field=form.start %}
+                {% include "includes/form_field.html" with field=form.end %}
+                {% include "includes/form_field.html" with field=form.group %}
+                {% include "includes/form_field.html" with field=form.category %}
+                {% include "includes/form_field.html" with field=form.member %}
+                {% include "includes/form_field.html" with field=form.min_amount %}
+                {% include "includes/form_field.html" with field=form.max_amount %}
+                {% include "includes/form_field.html" with field=form.currency %}
+            </div>
+        </fieldset>
+        <div class="actions">
+            <button type="submit" class="btn btn-accent">Enregistrer</button>
+            <a class="btn btn-secondary" href="{% url 'analytics:filter_list' %}">Annuler</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

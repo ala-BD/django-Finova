@@ -117,5 +117,11 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Finova <noreply@finov
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_TIMEOUT_SECONDS = int(os.environ.get("LLM_TIMEOUT_SECONDS", "20"))
 
+# M5 Analytics : jeu de démonstration tant que M1/M2 ne sont pas livrés,
+# API de taux de change (vide = repli sur les derniers taux connus puis les taux fixes).
+ANALYTICS_DEMO_DATA = os.environ.get("ANALYTICS_DEMO_DATA", "true").lower() == "true"
+EXCHANGE_RATE_API_URL = os.environ.get("EXCHANGE_RATE_API_URL", "")
+EXCHANGE_RATE_API_TIMEOUT = int(os.environ.get("EXCHANGE_RATE_API_TIMEOUT", "3"))
+
 CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL

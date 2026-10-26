@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static analytics_tags %}
+{% block title %}Tableau de bord · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analytics.css' %}">{% endblock %}
+{% block content %}
+{% include "analytics/_nav.html" %}
+
+<h1>Tableau de bord</h1>
+{% include "analytics/_demo_notice.html" %}
+
+<section class="card" aria-labelledby="filters-title">
+    <h2 id="filters-title">Filtres</h2>
+    {% if active_filter %}
+        <p class="help">Filtre appliqué : <strong>{{ active_filter.name }}</strong></p>
+    {% endif %}
+    {% if form.errors %}
+        <div class="form-errors" role="alert">
+            <p>Certains filtres sont invalides : toutes les dépenses sont affichées.</p>
+        </div>
+    {% endif %}
+    <form method="get" action="{% url 'analytics:dashboard' %}" class="filter-form" novalidate>
+        <div class="filter-grid">
+            {% include "includes/form_field.html" with field=form.start %}
+            {% include "includes/form_field.html" with field=form.end %}
+            {% include "includes/form_field.html" with field=form.group %}
+            {% include "includes/form_field.html" with field=form.category %}
+            {% include "includes/form_field.html" with field=form.member %}
+            {% include "includes/form_field.html" with field=form.min_amount %}
+            {% include "includes/form_field.html" with field=form.max_amount %}
+            {% include "includes/form_field.html" with field=form.currency %}
+        </div>
+        <div class="actions">
+            <button type="submit" class="btn btn-accent">Appliquer</button>
+            <a class="btn btn-secondary" href="{% url 'analytics:dashboard' %}">Réinitialiser</a>
+            <button type="submit" class="btn btn-secondary" formaction="{% url 'analytics:filter_create' %}">Enregistrer ce filtre</button>
+        </div>
+    </form>
+</section>
+
+{% if not data.count %}
+    <section class="card">
+        <h2>Aucune dépense</h2>
+        <p>Aucune dépense ne correspond à ces filtres.</p>
+    </section>
+{% else %}
+
+<section aria-labelledby="kpi-title">
+    <h2 id="kpi-title" class="visually-hidden">Indicateurs clés</h2>
+    <ul class="kpis">
+        <li class="kpi">
+            <span class="kpi-label">Total dépensé</span>
+            <span class="kpi-value">{{ data.total|money:currency }}</span>
+        </li>
+        <li class="kpi">
+            <span class="kpi-label">Nombre de dépenses</span>
+            <span class="kpi-value">{{ data.count }}</span>
+        </li>
+        <li class="kpi">
+            <span class="kpi-label">Dépense moyenne</span>
+            <span class="kpi-value">{{ data.average|money:currency }}</span>
+        </li>
+        <li class="kpi">
+            <span class="kpi-label">Signalements</span>
+            <span class="kpi-value">{{ detection_count }}</span>
+            <a class="kpi-link" href="{% url 'analytics:anomaly_list' %}">Voir les anomalies</a>
+        </li>
+    </ul>
+    {% if rates %}
+        <p class="help">
+            Montants convertis en {{ currency }} :
+            {% for code, quote in rates.items %}
+                1 {{ code }} = {{ quote.rate|number:4 }} {{ currency }}
+                ({% if quote.source == "fixed" %}taux fixe indicatif{% elif quote.source == "db" %}dernier taux connu{% else %}taux du jour{% endif %}){% if not forloop.last %} ·{% endif %}
+            {% endfor %}
+        </p>
+    {% endif %}
+</section>
+
+<section class="card summary-card" aria-labelledby="summary-title">
+    <h2 id="summary-title">Résumé du mois</h2>
+    <div id="summary"
+         class="summary"
+         data-url="{% url 'analytics:summary' %}{% if query %}?{{ query }}{% endif %}"
+         aria-live="polite"
+         aria-busy="true">
+        <p class="loading"><span class="spinner" aria-hidden="true"></span> Analyse en cours…</p>
+    </div>
+    <noscript><p>Activez JavaScript pour afficher le résumé du mois.</p></noscript>
+</section>
+
+<div class="chart-grid">
+    <figure class="card chart-card">
+        <figcaption><h2>Répartition par catégorie</h2></figcaption>
+        <div class="chart-box">
+            <canvas id="chart-category" role="img"
+                    aria-label="Graphique en anneau de la répartition des dépenses par catégorie. Les valeurs sont dans le tableau qui suit."></canvas>
+        </div>
+        <details>
+            <summary>Voir les données</summary>
+            <table>
+                <caption class="visually-hidden">Dépenses par catégorie</caption>
+                <thead><tr><th scope="col">Catégorie</th><th scope="col" class="num">Montant</th><th scope="col" class="num">Part</th></tr></thead>
+                <tbody>
+                    {% for row in data.by_category %}
+                        <tr><th scope="row">{{ row.label }}</th><td class="num">{{ row.value|money:currency }}</td><td class="num">{{ row.share|number:1 }} %</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    </figure>
+
+    <figure class="card chart-card">
+        <figcaption><h2>Évolution mensuelle</h2></figcaption>
+        <div class="chart-box">
+            <canvas id="chart-month" role="img"
+                    aria-label="Courbe de l'évolution mensuelle des dépenses. Les valeurs sont dans le tableau qui suit."></canvas>
+        </div>
+        <details>
+            <summary>Voir les données</summary>
+            <table>
+                <caption class="visually-hidden">Dépenses par mois</caption>
+                <thead><tr><th scope="col">Mois</th><th scope="col" class="num">Montant</th></tr></thead>
+                <tbody>
+                    {% for row in data.by_month %}
+                        <tr><th scope="row">{{ row.label|capfirst }}</th><td class="num">{{ row.value|money:currency }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    </figure>
+
+    <figure class="card chart-card chart-wide">
+        <figcaption><h2>Dépenses par membre (payeur)</h2></figcaption>
+        <div class="chart-box">
+            <canvas id="chart-member" role="img"
+                    aria-label="Graphique en barres des montants payés par chaque membre. Les valeurs sont dans le tableau qui suit."></canvas>
+        </div>
+        <details>
+            <summary>Voir les données</summary>
+            <table>
+                <caption class="visually-hidden">Dépenses par membre</caption>
+                <thead><tr><th scope="col">Membre</th><th scope="col" class="num">Montant payé</th></tr></thead>
+                <tbody>
+                    {% for row in data.by_member %}
+                        <tr><th scope="row">{{ row.label }}</th><td class="num">{{ row.value|money:currency }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    </figure>
+</div>
+
+<section class="card" aria-labelledby="detections-title">
+    <h2 id="detections-title">Anomalies et doublons dans la sélection</h2>
+    <p class="help">{{ detection_count }} signalement{{ detection_count|pluralize }} · analyse en {{ detection_ms }} ms.</p>
+    {% if detections %}
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr><th scope="col">Type</th><th scope="col">Dépense</th><th scope="col">Date</th><th scope="col" class="num">Montant</th><th scope="col">Pourquoi</th></tr>
+                </thead>
+                <tbody>
+                    {% for d in detections %}
+                        <tr>
+                            <td><span class="tag tag-{{ d.kind }}">{% if d.kind == "anomaly" %}Anomalie{% else %}Doublon{% endif %}</span></td>
+                            <th scope="row">{{ d.record.title }} <span class="muted">· {{ d.record.group_name }}</span></th>
+                            <td>{{ d.record.date|date:"d/m/Y" }}</td>
+                            <td class="num">{{ d.record.amount|money:currency }}</td>
+                            <td>{{ d.reason }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <form method="post" action="{% url 'analytics:anomaly_scan' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary">Enregistrer les signalements pour les revoir</button>
+        </form>
+    {% else %}
+        <p>Aucune anomalie détectée.</p>
+    {% endif %}
+</section>
+
+{{ data.charts|json_script:"chart-data" }}
+{{ currency|json_script:"chart-currency" }}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if data.count %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="{% static 'js/analytics.js' %}"></script>
+{% endif %}
+{% endblock %}
