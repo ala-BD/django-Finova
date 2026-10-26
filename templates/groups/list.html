@@ -9,6 +9,41 @@
     </span>
 </div>
 
+<form method="get" class="group-filters" role="search">
+    <div>
+        <label for="group-search">Rechercher un groupe</label>
+        <input
+            id="group-search"
+            type="search"
+            name="q"
+            value="{{ search_query }}"
+            placeholder="Nom ou description"
+        >
+    </div>
+    <div>
+        <label for="group-currency">Devise</label>
+        <select id="group-currency" name="currency">
+            <option value="">Toutes les devises</option>
+            {% for value, label in currency_choices %}
+                <option value="{{ value }}"{% if selected_currency == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="group-split-rule">Règle de partage</label>
+        <select id="group-split-rule" name="split_rule">
+            <option value="">Toutes les règles</option>
+            {% for value, label in split_rule_choices %}
+                <option value="{{ value }}"{% if selected_split_rule == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="actions">
+        <button type="submit" class="btn btn-primary btn-inline">Rechercher / filtrer</button>
+        <a class="btn btn-inline" href="{% url 'groups:list' %}">Réinitialiser</a>
+    </div>
+</form>
+
 {% if groups %}
     <ul class="card-list">
         {% for group in groups %}
@@ -19,6 +54,10 @@
         {% endfor %}
     </ul>
 {% else %}
-    <p class="empty">Vous n'appartenez encore à aucun groupe.</p>
+    {% if search_query or selected_currency or selected_split_rule %}
+        <p class="empty">Aucun groupe ne correspond à votre recherche ou à vos filtres.</p>
+    {% else %}
+        <p class="empty">Vous n'appartenez encore à aucun groupe.</p>
+    {% endif %}
 {% endif %}
 {% endblock %}

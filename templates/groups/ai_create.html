@@ -8,7 +8,7 @@
     <span class="ai-badge">✦ IA</span>
     <h1>Créer un groupe avec l'assistant</h1>
     <p class="ai-subtitle">
-      Décrivez votre projet en une phrase, l'IA génère le groupe, les catégories et les budgets.
+      Décrivez votre projet. Vérifiez et modifiez la proposition avant de créer le groupe.
     </p>
   </div>
 
@@ -34,30 +34,55 @@
     </div>
   </form>
 
-  {# ── Zone de résultat IA ── #}
-  <div id="ai-result" hidden>
-    <div class="ai-result-card">
-      <div class="ai-result-header">
-        <span class="ai-ok-badge">✓ Groupe généré</span>
-        <strong id="ai-group-name"></strong>
+  <div id="ai-proposal" class="ai-result-card" hidden>
+    <h2>Vérifiez et modifiez la proposition</h2>
+    <p>Les champs sont modifiables. Le groupe ne sera créé qu’après confirmation.</p>
+    <form id="proposal-form">
+      {% csrf_token %}
+      <div>
+        <label for="proposal-name">Nom du groupe</label>
+        <input id="proposal-name" name="name" type="text" minlength="3" maxlength="80" required>
       </div>
-      <ul id="ai-categories" class="ai-tag-list"></ul>
-      <table id="ai-budgets-table" class="data-table ai-budget-table" hidden>
-        <thead>
-          <tr>
-            <th>Catégorie</th>
-            <th>Budget suggéré</th>
-          </tr>
-        </thead>
-        <tbody id="ai-budgets-body"></tbody>
-      </table>
-      <p id="ai-redirect-msg" class="ai-redirect-msg">
-        Redirection vers le groupe…
+      <div>
+        <label for="proposal-description">Description</label>
+        <textarea id="proposal-description" name="description" maxlength="500" rows="3"></textarea>
+      </div>
+      <div>
+        <label for="proposal-currency">Devise</label>
+        <select id="proposal-currency" name="currency" required>
+          {% for value, label in form.fields.currency.choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="proposal-split-rule">Règle de partage</label>
+        <select id="proposal-split-rule" name="default_split_rule" required>
+          {% for value, label in form.fields.default_split_rule.choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <fieldset>
+        <legend>Catégories (2 à 6)</legend>
+        <div id="proposal-categories"></div>
+        <button id="add-category" type="button" class="btn btn-inline">Ajouter une catégorie</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Budgets suggérés (facultatif)</legend>
+        <div id="proposal-budgets"></div>
+        <button id="add-budget" type="button" class="btn btn-inline">Ajouter un budget</button>
+      </fieldset>
+
+      <p class="actions">
+        <button id="confirm-proposal" type="submit" class="btn btn-primary">Confirmer et créer le groupe</button>
+        <button id="edit-prompt" type="button" class="btn btn-inline">Modifier la description du projet</button>
       </p>
-    </div>
+    </form>
   </div>
 
-  {# ── Zone d'erreur IA ── #}
   <div id="ai-error" class="form-errors" role="alert" aria-live="assertive" hidden>
     <p id="ai-error-msg"></p>
     <button id="ai-retry-btn" class="btn btn-inline" hidden>Réessayer</button>
@@ -87,98 +112,194 @@
   "use strict";
 
   const form      = document.getElementById("ai-form");
+  const proposalForm = document.getElementById("proposal-form");
   const prompt    = document.getElementById("ai-prompt");
   const submitBtn = document.getElementById("ai-submit");
   const btnText   = document.getElementById("ai-btn-text");
   const spinner   = document.getElementById("ai-spinner");
-
-  const resultBox   = document.getElementById("ai-result");
-  const groupName   = document.getElementById("ai-group-name");
-  const catList     = document.getElementById("ai-categories");
-  const budgetTable = document.getElementById("ai-budgets-table");
-  const budgetBody  = document.getElementById("ai-budgets-body");
-  const redirectMsg = document.getElementById("ai-redirect-msg");
-
+  const proposalBox = document.getElementById("ai-proposal");
+  const categoriesBox = document.getElementById("proposal-categories");
+  const budgetsBox = document.getElementById("proposal-budgets");
+  const confirmButton = document.getElementById("confirm-proposal");
+  const confirmButtonText = confirmButton.textContent;
   const errorBox    = document.getElementById("ai-error");
   const errorMsg    = document.getElementById("ai-error-msg");
   const retryBtn    = document.getElementById("ai-retry-btn");
+  let categoryIndex = 0;
+  let budgetIndex = 0;
 
-  function setLoading(loading) {
+  function setLoading(loading, confirming) {
     submitBtn.disabled = loading;
-    btnText.hidden     = loading;
-    spinner.hidden     = !loading;
-    prompt.disabled    = loading;
+    btnText.hidden = loading && !confirming;
+    spinner.hidden = !loading || confirming;
+    prompt.disabled = loading;
+    confirmButton.disabled = loading && confirming;
+    confirmButton.textContent = loading && confirming
+      ? "Création du groupe…"
+      : confirmButtonText;
   }
 
   function showError(msg, canRetry) {
-    resultBox.hidden = true;
     errorMsg.textContent = msg;
     retryBtn.hidden = !canRetry;
     errorBox.hidden = false;
   }
 
-  function showResult(data) {
-    errorBox.hidden = true;
-
-    groupName.textContent = data.group_name;
-
-    // Catégories
-    catList.innerHTML = "";
-    (data.categories || []).forEach(function (cat) {
-      const li = document.createElement("li");
-      li.className = "ai-tag";
-      li.textContent = cat;
-      catList.appendChild(li);
-    });
-
-    // Budgets
-    budgetBody.innerHTML = "";
-    if (data.budgets && data.budgets.length > 0) {
-      data.budgets.forEach(function (b) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${b.category}</td><td>${b.amount.toLocaleString("fr-TN")} TND</td>`;
-        budgetBody.appendChild(tr);
-      });
-      budgetTable.hidden = false;
+  function addCategory(value) {
+    if (categoriesBox.children.length >= 6) {
+      return;
     }
-
-    resultBox.hidden = false;
-
-    // Redirection automatique après 2.5 s
-    setTimeout(function () {
-      window.location.href = data.redirect;
-    }, 2500);
+    const row = document.createElement("div");
+    const input = document.createElement("input");
+    const label = document.createElement("label");
+    const remove = document.createElement("button");
+    const fieldId = "proposal-category-" + categoryIndex++;
+    input.type = "text";
+    input.name = "categories";
+    input.id = fieldId;
+    input.maxLength = 80;
+    input.required = true;
+    input.value = value || "";
+    input.addEventListener("input", updateBudgetCategoryOptions);
+    label.htmlFor = fieldId;
+    label.textContent = "Catégorie";
+    remove.type = "button";
+    remove.className = "btn btn-inline";
+    remove.textContent = "Supprimer";
+    remove.addEventListener("click", function () {
+      row.remove();
+      updateBudgetCategoryOptions();
+    });
+    row.append(label, input, remove);
+    categoriesBox.appendChild(row);
+    updateBudgetCategoryOptions();
   }
 
-  form.addEventListener("submit", async function (e) {
-    e.preventDefault();
-    errorBox.hidden  = true;
-    resultBox.hidden = true;
-    setLoading(true);
+  function updateBudgetCategoryOptions() {
+    const categories = Array.from(categoriesBox.querySelectorAll('input[name="categories"]'));
+    budgetsBox.querySelectorAll('select[name="budget_category"]').forEach(function (select) {
+      const previousValue = select.value;
+      select.replaceChildren();
+      categories.forEach(function (category) {
+        const option = document.createElement("option");
+        option.value = category.value;
+        option.textContent = category.value || "Catégorie à renseigner";
+        select.appendChild(option);
+      });
+      if (categories.some(function (category) { return category.value === previousValue; })) {
+        select.value = previousValue;
+      }
+    });
+  }
 
-    const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
-    const body = new URLSearchParams({ prompt: prompt.value, csrfmiddlewaretoken: csrfToken });
+  function addBudget(budget) {
+    const row = document.createElement("div");
+    const categoryLabel = document.createElement("label");
+    const categorySelect = document.createElement("select");
+    const amountLabel = document.createElement("label");
+    const amountInput = document.createElement("input");
+    const remove = document.createElement("button");
+    const index = budgetIndex++;
 
+    categorySelect.name = "budget_category";
+    categorySelect.id = "proposal-budget-category-" + index;
+    categoryLabel.htmlFor = categorySelect.id;
+    categoryLabel.textContent = "Catégorie du budget";
+    amountInput.name = "budget_amount";
+    amountInput.id = "proposal-budget-amount-" + index;
+    amountInput.type = "number";
+    amountInput.min = "0.001";
+    amountInput.step = "0.001";
+    amountInput.required = true;
+    amountInput.value = budget ? budget.amount : "";
+    amountLabel.htmlFor = amountInput.id;
+    amountLabel.textContent = "Montant suggéré (dans la devise choisie)";
+    remove.type = "button";
+    remove.className = "btn btn-inline";
+    remove.textContent = "Supprimer";
+    remove.addEventListener("click", function () { row.remove(); });
+
+    row.append(categoryLabel, categorySelect, amountLabel, amountInput, remove);
+    budgetsBox.appendChild(row);
+    updateBudgetCategoryOptions();
+    if (budget) {
+      categorySelect.value = budget.category;
+    }
+  }
+
+  function showProposal(data) {
+    const proposal = data.proposal;
+    proposalForm.elements.name.value = proposal.name;
+    proposalForm.elements.description.value = proposal.description;
+    proposalForm.elements.currency.value = proposal.currency;
+    proposalForm.elements.default_split_rule.value = proposal.default_split_rule;
+    categoriesBox.replaceChildren();
+    budgetsBox.replaceChildren();
+    proposal.categories.forEach(addCategory);
+    proposal.budgets.forEach(addBudget);
+    proposalBox.hidden = false;
+    errorBox.hidden = true;
+    proposalBox.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function sendForm(formData, confirming) {
+    errorBox.hidden = true;
+    setLoading(true, confirming);
     try {
-      const resp = await fetch("{% url 'groups:ai_create' %}", {
+      const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
+      const response = await fetch("{% url 'groups:ai_create' %}", {
         method: "POST",
         headers: { "X-CSRFToken": csrfToken, "X-Requested-With": "XMLHttpRequest" },
-        body: body,
+        body: formData,
       });
-      const data = await resp.json();
-      if (data.ok) {
-        showResult(data);
-      } else {
-        showError(data.error || "Erreur inconnue.", data.retry === true);
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        showError(data.error || "La demande n'a pas pu être traitée.", data.retry === true);
+        return;
       }
-    } catch (err) {
-      showError("Erreur réseau. Vérifiez votre connexion.", true);
+      if (!confirming) {
+        showProposal(data);
+        return;
+      }
+      proposalBox.hidden = true;
+      errorMsg.textContent = "Groupe créé. Redirection…";
+      errorBox.hidden = false;
+      setTimeout(function () { window.location.href = data.redirect; }, 1200);
+    } catch (error) {
+      showError("Erreur réseau. Vérifiez votre connexion puis réessayez.", true);
     } finally {
-      setLoading(false);
+      setLoading(false, confirming);
     }
+  }
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    proposalBox.hidden = true;
+    const formData = new FormData(form);
+    formData.set("action", "generate");
+    sendForm(formData, false);
   });
 
-  // Bouton "Réessayer" : remet le focus sur le champ
+  proposalForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    const formData = new FormData(proposalForm);
+    formData.set("action", "confirm");
+    sendForm(formData, true);
+  });
+
+  document.getElementById("add-category").addEventListener("click", function () {
+    addCategory("");
+  });
+  document.getElementById("add-budget").addEventListener("click", function () {
+    if (budgetsBox.children.length < 6) {
+      addBudget(null);
+    }
+  });
+  document.getElementById("edit-prompt").addEventListener("click", function () {
+    proposalBox.hidden = true;
+    prompt.focus();
+  });
+
   retryBtn.addEventListener("click", function () {
     errorBox.hidden = true;
     prompt.focus();

@@ -65,3 +65,16 @@ Exemple : `feat(m1): invitation par jeton expirant`
 ## Variables d'environnement
 
 Voir `.env.example`. Ne jamais committer `.env`.
+
+En développement, le backend e-mail `console` affiche les messages dans le terminal
+et ne les envoie pas aux destinataires. Pour envoyer les invitations par e-mail,
+configurer `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`, `EMAIL_HOST`,
+`EMAIL_PORT`, `EMAIL_HOST_USER` et `EMAIL_HOST_PASSWORD` dans `.env`. Utiliser les
+identifiants SMTP ou le mot de passe d'application du fournisseur, jamais le mot de
+passe habituel du compte.
+
+Pour que les liens d'invitation soient accessibles aux destinataires, configurer
+`PUBLIC_BASE_URL` avec l'URL publique de l'application, par exemple
+`https://finova.example.com`. Sans cette valeur, Django construit le lien depuis
+l'adresse utilisée par l'administrateur ; en local, ce sera généralement
+`http://127.0.0.1:8000`, accessible uniquement depuis sa machine.

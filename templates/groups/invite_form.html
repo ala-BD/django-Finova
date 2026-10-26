@@ -4,16 +4,94 @@
 <article class="auth-card">
     <h1>Inviter dans {{ group.name }}</h1>
     <p>Le lien expire au bout de 7 jours. Une seule invitation active par e-mail.</p>
+    <p>L'assistant peut rédiger un message à copier. Il ne l'envoie pas : le lien personnel sera affiché après la création de l'invitation.</p>
     {% if form.non_field_errors %}
         <div class="form-errors" role="alert" aria-live="assertive">
             {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
         </div>
     {% endif %}
-    <form method="post" novalidate>
+    <form id="invitation-form" method="post" novalidate>
         {% csrf_token %}
         {% include "includes/form_field.html" with field=form.email %}
+        <button
+            id="generate-invitation-message"
+            type="button"
+            class="btn btn-inline"
+            data-url="{% url 'groups:invite' group.pk %}"
+        >Rédiger un message avec l'IA</button>
+        <div id="invitation-message-result" hidden>
+            <label for="invitation-message">Message à copier et personnaliser</label>
+            <textarea id="invitation-message" rows="6" maxlength="1200"></textarea>
+            <p>Après avoir créé l'invitation, remplacez <strong>[LIEN D'INVITATION]</strong> par le lien personnel affiché par Finova.</p>
+            <button id="copy-invitation-message" type="button" class="btn btn-inline">Copier le message</button>
+        </div>
+        <p id="invitation-message-error" class="form-errors" role="alert" hidden></p>
+        <p id="invitation-message-status" role="status" aria-live="polite" hidden></p>
         <button type="submit" class="btn btn-primary">Créer l'invitation</button>
     </form>
     <p class="auth-alt"><a href="{% url 'groups:detail' group.pk %}">Annuler</a></p>
 </article>
+<script>
+(function () {
+    "use strict";
+    const form = document.getElementById("invitation-form");
+    const generateButton = document.getElementById("generate-invitation-message");
+    const messageResult = document.getElementById("invitation-message-result");
+    const message = document.getElementById("invitation-message");
+    const error = document.getElementById("invitation-message-error");
+    const status = document.getElementById("invitation-message-status");
+
+    generateButton.addEventListener("click", async function () {
+        const emailInput = form.querySelector("[name=email]");
+        if (!emailInput.value.trim()) {
+            emailInput.focus();
+            emailInput.reportValidity();
+            return;
+        }
+        generateButton.disabled = true;
+        generateButton.textContent = "Rédaction en cours…";
+        error.hidden = true;
+        status.hidden = true;
+        const formData = new FormData(form);
+        formData.set("action", "generate_message");
+        try {
+            const response = await fetch(generateButton.dataset.url, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value,
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "Le message n'a pas pu être généré.");
+            }
+            message.value = data.message;
+            messageResult.hidden = false;
+            status.textContent = "Message prêt. Vérifiez-le avant de le partager.";
+            status.hidden = false;
+        } catch (err) {
+            error.textContent = err.message || "Erreur réseau. Réessayez.";
+            error.hidden = false;
+        } finally {
+            generateButton.disabled = false;
+            generateButton.textContent = "Rédiger un message avec l'IA";
+        }
+    });
+
+    document.getElementById("copy-invitation-message").addEventListener("click", async function () {
+        try {
+            await navigator.clipboard.writeText(message.value);
+            status.textContent = "Message copié dans le presse-papiers.";
+            status.hidden = false;
+        } catch (err) {
+            message.focus();
+            message.select();
+            status.textContent = "La copie automatique est indisponible : copiez le texte sélectionné.";
+            status.hidden = false;
+        }
+    });
+})();
+</script>
 {% endblock %}

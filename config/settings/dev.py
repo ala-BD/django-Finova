@@ -1,5 +1,7 @@
 """Settings de développement (SQLite)."""
 
+import os
+
 from .base import *  # noqa: F403
 
 DEBUG = True
@@ -13,4 +15,7 @@ DATABASES = {
     }
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)

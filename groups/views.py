@@ -1,6 +1,13 @@
+import logging
+import smtplib
+from decimal import Decimal
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -11,18 +18,21 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from core.permissions import GroupAdminRequiredMixin, GroupMemberRequiredMixin
 
-from decimal import Decimal
-
 from .forms import GroupForm, InvitationForm, MembershipForm, SplitPreviewForm
 from .models import Group, Invitation, Membership
 from .services import (
     can_leave,
+    compare_equity_rules,
     default_weight_for,
     generate_group_from_prompt,
+    generate_invitation_message,
     get_member_balance,
     is_admin,
     preview_split,
+    validate_group_proposal,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GroupListView(LoginRequiredMixin, ListView):
@@ -30,15 +40,42 @@ class GroupListView(LoginRequiredMixin, ListView):
     context_object_name = "groups"
 
     def get_queryset(self):
-        return (
+        queryset = (
             Group.objects.filter(
                 memberships__user=self.request.user,
                 memberships__is_active=True,
                 is_archived=False,
             )
             .distinct()
-            .order_by("name")
         )
+        search_query = self.request.GET.get("q", "").strip()
+        currency = self.request.GET.get("currency", "")
+        split_rule = self.request.GET.get("split_rule", "")
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query)
+                | Q(description__icontains=search_query)
+            )
+        if currency in Group.Currency.values:
+            queryset = queryset.filter(currency=currency)
+        if split_rule in Group.SplitRule.values:
+            queryset = queryset.filter(default_split_rule=split_rule)
+
+        return queryset.order_by("name")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "search_query": self.request.GET.get("q", "").strip(),
+                "selected_currency": self.request.GET.get("currency", ""),
+                "selected_split_rule": self.request.GET.get("split_rule", ""),
+                "currency_choices": Group.Currency.choices,
+                "split_rule_choices": Group.SplitRule.choices,
+            }
+        )
+        return context
 
 
 class GroupCreateView(LoginRequiredMixin, CreateView):
@@ -202,24 +239,134 @@ class InvitationCreateView(GroupAdminRequiredMixin, CreateView):
         kwargs["group"] = self.get_group()
         return kwargs
 
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("action") != "generate_message":
+            return super().post(request, *args, **kwargs)
+
+        from core.ai import LLMError
+
+        form = self.get_form()
+        if not form.is_valid():
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "error": " ".join(
+                        error
+                        for errors in form.errors.values()
+                        for error in errors
+                    ),
+                },
+                status=400,
+            )
+        try:
+            message = generate_invitation_message(
+                self.get_group(),
+                user=request.user,
+            )
+        except LLMError as exc:
+            return JsonResponse({"ok": False, "error": str(exc)}, status=503)
+
+        return JsonResponse({"ok": True, "message": message})
+
     def form_valid(self, form):
         invitation = form.save(commit=False)
         invitation.group = self.get_group()
         invitation.invited_by = self.request.user
         invitation.save()
-        accept_url = self.request.build_absolute_uri(
-            reverse("invitations:accept", kwargs={"token": invitation.token})
+        accept_path = reverse("invitations:accept", kwargs={"token": invitation.token})
+        if settings.PUBLIC_BASE_URL:
+            accept_url = f"{settings.PUBLIC_BASE_URL}{accept_path}"
+        else:
+            accept_url = self.request.build_absolute_uri(accept_path)
+
+        if settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
+            messages.warning(
+                self.request,
+                "Invitation créée, mais aucun e-mail n'a été envoyé : le backend "
+                "console affiche le message dans le terminal du serveur. "
+                f"Lien valable 7 jours : {accept_url}",
+            )
+            return redirect("groups:detail", gid=invitation.group_id)
+
+        email_body = (
+            "Bonjour,\n\n"
+            f"Vous êtes invité(e) à rejoindre le groupe « {invitation.group.name} » "
+            "sur Finova.\n"
         )
-        messages.success(
-            self.request,
-            f"Invitation envoyée à {invitation.email}. Lien (7 jours) : {accept_url}",
+        if invitation.group.description:
+            email_body += f"\nÀ propos du groupe : {invitation.group.description}\n"
+        email_body += (
+            f"\nRègle de partage : "
+            f"{invitation.group.get_default_split_rule_display()}.\n\n"
+            f"Pour rejoindre le groupe, ouvrez ce lien :\n{accept_url}\n\n"
+            "Ce lien personnel expire dans 7 jours.\n"
         )
+        try:
+            sent_count = send_mail(
+                subject=f"Invitation Finova — {invitation.group.name}",
+                message=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[invitation.email],
+                fail_silently=False,
+            )
+        except (smtplib.SMTPException, OSError):
+            logger.exception(
+                "Unable to send group invitation email for invitation %s",
+                invitation.pk,
+            )
+            messages.error(
+                self.request,
+                "L'invitation a été créée, mais l'e-mail n'a pas pu être envoyé. "
+                f"Vérifiez la configuration SMTP. Lien valable 7 jours : {accept_url}",
+            )
+        else:
+            if sent_count != 1:
+                logger.error(
+                    "Email backend did not send invitation email for invitation %s",
+                    invitation.pk,
+                )
+                messages.error(
+                    self.request,
+                    "L'invitation a été créée, mais le serveur e-mail ne l'a pas "
+                    "confirmée comme envoyée. Vérifiez la configuration SMTP. "
+                    f"Lien valable 7 jours : {accept_url}",
+                )
+            else:
+                messages.success(
+                    self.request,
+                    f"Invitation envoyée par e-mail à {invitation.email}. "
+                    "Le lien expire dans 7 jours.",
+                )
         return redirect("groups:detail", gid=invitation.group_id)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["group"] = self.get_group()
         return context
+
+
+class EquityCoachView(GroupMemberRequiredMixin, View):
+    def post(self, request, gid):
+        from core.ai import LLMError
+
+        form = SplitPreviewForm(request.POST)
+        if not form.is_valid():
+            return JsonResponse(
+                {"ok": False, "error": "Saisissez un montant valide."},
+                status=400,
+            )
+        try:
+            comparison = compare_equity_rules(
+                self.get_group(),
+                form.cleaned_data["amount"],
+                user=request.user,
+            )
+        except LLMError as exc:
+            return JsonResponse({"ok": False, "error": str(exc)}, status=503)
+        except ValueError as exc:
+            return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
+        return JsonResponse({"ok": True, "comparison": comparison})
 
 
 class InvitationAcceptView(LoginRequiredMixin, View):
@@ -307,13 +454,76 @@ class GroupAICreateView(LoginRequiredMixin, View):
         return render(request, self.template_name, {"form": GroupForm()})
 
     def post(self, request):
-        import json
         from core.ai import LLMError
+
+        action = request.POST.get("action", "generate")
+        if action == "confirm":
+            budget_categories = request.POST.getlist("budget_category")
+            budget_amounts = request.POST.getlist("budget_amount")
+            if len(budget_categories) != len(budget_amounts):
+                return JsonResponse(
+                    {"ok": False, "error": "Les lignes de budget sont invalides.", "retry": False},
+                    status=422,
+                )
+
+            proposal = {
+                "name": request.POST.get("name", ""),
+                "description": request.POST.get("description", ""),
+                "currency": request.POST.get("currency", ""),
+                "default_split_rule": request.POST.get("default_split_rule", ""),
+                "categories": request.POST.getlist("categories"),
+                "budgets": [
+                    {"category": category, "amount": amount}
+                    for category, amount in zip(budget_categories, budget_amounts)
+                ],
+            }
+            try:
+                group_data = validate_group_proposal(proposal)
+            except ValueError as exc:
+                return JsonResponse(
+                    {"ok": False, "error": str(exc), "retry": False},
+                    status=422,
+                )
+
+            with transaction.atomic():
+                group = Group.objects.create(
+                    name=group_data["name"],
+                    description=group_data["description"],
+                    currency=group_data["currency"],
+                    default_split_rule=group_data["default_split_rule"],
+                    created_by=request.user,
+                )
+                Membership.objects.create(
+                    group=group,
+                    user=request.user,
+                    role=Membership.Role.ADMIN,
+                    weight=default_weight_for(request.user),
+                )
+                _create_budgets_if_available(group, group_data, request.user)
+
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "redirect": reverse("groups:detail", kwargs={"gid": group.pk}),
+                    "group_name": group.name,
+                }
+            )
+
+        if action != "generate":
+            return JsonResponse(
+                {"ok": False, "error": "Action inconnue.", "retry": False},
+                status=400,
+            )
 
         prompt = (request.POST.get("prompt") or "").strip()
         if not prompt:
             return JsonResponse(
                 {"ok": False, "error": "Décrivez votre projet en une phrase.", "retry": False},
+                status=400,
+            )
+        if len(prompt) > 300:
+            return JsonResponse(
+                {"ok": False, "error": "La description ne peut pas dépasser 300 caractères.", "retry": False},
                 status=400,
             )
 
@@ -330,31 +540,10 @@ class GroupAICreateView(LoginRequiredMixin, View):
                 status=422,
             )
 
-        # Création du groupe + membership admin dans une transaction atomique
-        with transaction.atomic():
-            group = Group.objects.create(
-                name=group_data["name"],
-                description=group_data["description"],
-                currency=group_data["currency"],
-                default_split_rule=group_data["default_split_rule"],
-                created_by=request.user,
-            )
-            Membership.objects.create(
-                group=group,
-                user=request.user,
-                role=Membership.Role.ADMIN,
-                weight=default_weight_for(request.user),
-            )
-            # Contrat M4 : création des catégories et budgets si disponibles
-            _create_budgets_if_available(group, group_data, request.user)
-
         return JsonResponse(
             {
                 "ok": True,
-                "redirect": reverse("groups:detail", kwargs={"gid": group.pk}),
-                "group_name": group.name,
-                "categories": group_data["categories"],
-                "budgets": group_data["budgets"],
+                "proposal": group_data,
             }
         )
 

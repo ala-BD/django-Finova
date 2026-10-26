@@ -99,4 +99,96 @@
         </tbody>
     </table>
 </section>
+
+<section class="equity-coach">
+    <h2>Coach d'équité IA</h2>
+    <p>Comparez les parts égales et selon les poids. Les montants sont calculés par Finova ; l'IA explique les différences sans choisir à votre place.</p>
+    <form id="equity-coach-form" data-url="{% url 'groups:equity_coach' group.pk %}">
+        {% csrf_token %}
+        <label for="equity-coach-amount">Montant à comparer ({{ group.currency }})</label>
+        <input
+            id="equity-coach-amount"
+            name="amount"
+            type="number"
+            min="0.001"
+            step="0.001"
+            value="{{ preview.amount }}"
+            required
+        >
+        <button id="equity-coach-submit" type="submit" class="btn btn-primary btn-inline">Comparer avec le coach</button>
+    </form>
+    <p id="equity-coach-error" class="form-errors" role="alert" hidden></p>
+    <div id="equity-coach-result" aria-live="polite" hidden>
+        <p id="equity-coach-explanation"></p>
+        <div class="table-scroll">
+            <table class="data-table">
+                <caption>Comparaison des montants calculés</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Membre</th>
+                        <th scope="col">Part égale</th>
+                        <th scope="col">Part selon le poids</th>
+                    </tr>
+                </thead>
+                <tbody id="equity-coach-rows"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<script>
+(function () {
+    "use strict";
+    const form = document.getElementById("equity-coach-form");
+    const button = document.getElementById("equity-coach-submit");
+    const error = document.getElementById("equity-coach-error");
+    const result = document.getElementById("equity-coach-result");
+    const explanation = document.getElementById("equity-coach-explanation");
+    const rows = document.getElementById("equity-coach-rows");
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        button.disabled = true;
+        button.textContent = "Comparaison en cours…";
+        error.hidden = true;
+        result.hidden = true;
+
+        try {
+            const response = await fetch(form.dataset.url, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value,
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: new FormData(form)
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "La comparaison n'a pas pu être effectuée.");
+            }
+
+            explanation.textContent = data.comparison.explanation;
+            rows.replaceChildren();
+            data.comparison.equal.forEach(function (equalShare, index) {
+                const weightedShare = data.comparison.by_weight[index];
+                const row = document.createElement("tr");
+                [equalShare.member, equalShare.share + " " + data.comparison.currency,
+                    weightedShare.share + " " + data.comparison.currency].forEach(function (value) {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                rows.appendChild(row);
+            });
+            result.hidden = false;
+        } catch (err) {
+            error.textContent = err.message || "Erreur réseau. Réessayez.";
+            error.hidden = false;
+        } finally {
+            button.disabled = false;
+            button.textContent = "Comparer avec le coach";
+        }
+    });
+})();
+</script>
 {% endblock %}
