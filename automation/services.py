@@ -17,6 +17,7 @@ from automation.models import (
     ReminderDelivery,
     ReminderRule,
 )
+from automation.help import CAPABILITIES, HELP_TOPICS, build_help, help_markdown, topic_from_keywords
 from core.ai import LLMError, call_llm
 from groups.services import is_member
 
@@ -45,6 +46,15 @@ ASSISTANT_FUNCTIONS = {
     "summarize_month": {
         "description": "Résume les dépenses du mois courant dans les groupes autorisés.",
         "parameters": {},
+    },
+    "get_help": {
+        "description": (
+            "Explique comment utiliser l'application Finova (créer un groupe, inviter, ajouter une dépense, "
+            "rembourser, confirmer, échéancier, soldes, dépenses récurrentes, analytics, budgets, quitter). "
+            "À utiliser pour toute question « comment faire / où trouver », ou si aucune autre fonction ne convient "
+            "(sujet vide = ce que l'assistant sait faire)."
+        ),
+        "parameters": {"topic": [*HELP_TOPICS, ""]},
     },
 }
 
@@ -282,9 +292,13 @@ def _validate_arguments(function_name, arguments):
         "get_budget_status": {"category"},
         "next_reminders": set(),
         "summarize_month": set(),
+        "get_help": {"topic"},
     }[function_name]
     if not set(arguments).issubset(expected):
         raise AssistantRequestError("Argument non autorisé.")
+    if function_name == "get_help":
+        topic = arguments.get("topic") or ""
+        return {"topic": topic if topic in HELP_TOPICS else ""}
 
     period = arguments.get("period", "month")
     if function_name == "list_expenses" and (
@@ -305,17 +319,28 @@ def _validate_arguments(function_name, arguments):
     return {"period": period, **arguments}
 
 
+HOW_TO_MARKERS = ("comment", "how ", "how?", "où ", "ou trouver", "where", "aide", "help",
+                  "c'est quoi", "what is", "puis-je", "can i", "est-ce que je peux", "expliqu", "explain")
+
+
 def _heuristic_function(question):
+    """Routage par mots-clés (FR/EN), utilisé si le LLM est indisponible ou sa réponse inexploitable."""
     text = question.casefold()
-    if any(word in text for word in ("budget", "budget", "restaurant")):
+    asks_amount = "combien" in text or "how much" in text  # « combien je dois » = donnée, pas mode d'emploi
+    if not asks_amount and any(marker in text for marker in HOW_TO_MARKERS):
+        return "get_help", {"topic": topic_from_keywords(text)}
+    if any(word in text for word in ("budget",)):
         return "get_budget_status", {"category": "general"}
-    if any(word in text for word in ("rappel", "échéance", "echeance")):
+    if any(word in text for word in ("rappel", "échéance", "echeance", "remind", "upcoming", "due")):
         return "next_reminders", {}
-    if any(word in text for word in ("solde", "dois", "rembourse")):
+    if any(word in text for word in ("solde", "dois", "rembourse", "owe", "balance", "debt")):
         return "get_balance", {}
-    if any(word in text for word in ("résume", "resume", "résumé")):
+    if any(word in text for word in ("résume", "resume", "résumé", "summary", "summarize", "summarise")):
         return "summarize_month", {}
-    return "list_expenses", {"period": "month"}
+    if any(word in text for word in ("dépense", "depense", "dépensé", "expense", "spend", "spent")):
+        return "list_expenses", {"period": "month"}
+    # Rien de reconnu : présenter ce que l'assistant sait faire plutôt que lister des dépenses au hasard
+    return "get_help", {"topic": topic_from_keywords(text)}
 
 
 def _route_question(user, question):
@@ -331,8 +356,12 @@ def _route_question(user, question):
     prompt = (
         "Choisis une seule fonction dans la liste blanche. Réponds uniquement en JSON "
         "avec les clés function et arguments. N'inclus aucun identifiant utilisateur "
-        "ou groupe. Fonctions: "
-        f"{json.dumps(ASSISTANT_FUNCTIONS, ensure_ascii=False)}\nQuestion: {question}"
+        "ou groupe. La question peut être en français ou en anglais.\n"
+        "- Question sur les données de l'utilisateur (combien, quelles dépenses, solde…) : "
+        "la fonction de données correspondante.\n"
+        "- Question « comment faire / où trouver / aide » sur l'application : get_help avec le sujet le plus proche.\n"
+        "- Salutation, question hors sujet ou rien ne convient : get_help avec topic \"\".\n"
+        f"Fonctions: {json.dumps(ASSISTANT_FUNCTIONS, ensure_ascii=False)}\nQuestion: {question}"
     )
     try:
         raw = call_llm(
@@ -365,6 +394,9 @@ def _execute_assistant_function(user, function_name, arguments):
     from settlements.services import member_balance_summary
 
     groups = _authorized_groups(user)
+    if function_name == "get_help":
+        return build_help(arguments["topic"], groups)
+
     if function_name == "next_reminders":
         cutoff = timezone.localdate() + timedelta(days=30)
         group_ids = [group.pk for group in groups]
@@ -405,10 +437,18 @@ def _execute_assistant_function(user, function_name, arguments):
 
 def _format_answer(user, question, function_name, data):
     prompt = (
-        "Réponds en français de façon claire et concise. Utilise uniquement les "
-        "données JSON ci-dessous; si elles sont vides, dis-le. N'invente aucune donnée.\n"
-        f"Question: {question}\nFonction: {function_name}\n"
-        f"Données autorisées: {json.dumps(data, ensure_ascii=False, default=str)}"
+        "Tu es l'assistant de Finova, une application de partage de dépenses. Réponds dans la langue de la "
+        "question : si elle est en anglais, réponds entièrement en anglais et traduis les informations "
+        "(garde seulement les libellés de boutons entre guillemets en français, car l'interface est en français). "
+        "Sois clair, concis et chaleureux, en Markdown simple (gras, listes, étapes numérotées).\n"
+        "Règles :\n"
+        "- Appuie-toi uniquement sur les informations ci-dessous ; n'invente ni montant, ni nom, ni lien.\n"
+        "- Ne parle jamais de JSON, de fonction ni de données techniques.\n"
+        "- Pour un lien, reprends exactement une url fournie, au format [texte](url).\n"
+        "- Si les informations ne permettent pas de répondre, dis-le simplement et propose ce que tu sais faire : "
+        f"{', '.join(CAPABILITIES)}.\n"
+        f"Question : {question}\n"
+        f"Informations : {json.dumps(data, ensure_ascii=False, default=str)}"
     )
     try:
         answer = call_llm(
@@ -424,6 +464,8 @@ def _format_answer(user, question, function_name, data):
     except LLMError:
         logger.warning("LLM indisponible pour formuler la réponse assistant.")
 
+    if function_name == "get_help":
+        return help_markdown(data)
     if not data:
         return "Je n'ai trouvé aucune donnée correspondante dans vos groupes."
     return "Voici les résultats disponibles : " + json.dumps(

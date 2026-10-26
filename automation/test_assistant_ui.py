@@ -27,6 +27,17 @@ class MarkdownRenderingTests(TestCase):
             "<ol><li>un</li><li>deux</li></ol><p>Fin</p>",
         )
 
+    def test_nested_list_keeps_numbering(self):
+        html = render_markdown("1. Ouvrez Groupes\n2. Choisissez :\n   - manuellement\n   - avec l'IA\n3. Validez")
+        self.assertEqual(
+            html,
+            "<ol><li>Ouvrez Groupes</li><li>Choisissez :<ul><li>manuellement</li><li>avec l&#x27;IA</li></ul>"
+            "</li><li>Validez</li></ol>",
+        )
+
+    def test_numbered_list_resumed_after_paragraph_keeps_its_number(self):
+        self.assertIn('<ol start="3"><li>Trois</li></ol>', render_markdown("1. Un\n2. Deux\n\nNote\n\n3. Trois"))
+
     def test_table(self):
         html = render_markdown("| Titre | Montant |\n|---|---:|\n| Loyer | 900 |\n| Pizza | 47,3 |")
         self.assertIn('<th scope="col">Titre</th>', html)
