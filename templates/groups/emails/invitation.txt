@@ -1,0 +1,15 @@
+{% autoescape off %}Bonjour,
+
+{{ inviter }} vous invite à rejoindre le groupe « {{ group.name }} » sur Finova, l'application de gestion et de partage de dépenses.
+{% if group.description %}
+« {{ group.description }} »
+{% endif %}
+Pour accepter l'invitation, ouvrez ce lien (valable jusqu'au {{ expires_at|date:"d/m/Y à H:i" }}) :
+{{ accept_url }}
+
+Connectez-vous ou créez un compte avec cette adresse e-mail ({{ invitation.email }}) pour rejoindre le groupe.
+
+Si vous ne connaissez pas {{ inviter }}, ignorez simplement ce message.
+
+— Finova
+{% endautoescape %}

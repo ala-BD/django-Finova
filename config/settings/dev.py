@@ -1,5 +1,7 @@
 """Settings de développement (SQLite)."""
 
+import os
+
 from .base import *  # noqa: F403
 
 DEBUG = True
@@ -13,4 +15,6 @@ DATABASES = {
     }
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Console par défaut (rien n'est envoyé) ; EMAIL_BACKEND dans .env permet l'envoi réel en SMTP.
+# Auparavant forcé à la console : les invitations n'étaient jamais envoyées, même configurées.
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
