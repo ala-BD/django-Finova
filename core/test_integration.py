@@ -158,6 +158,26 @@ class AssistantBalanceTests(IntegrationFixtures, TestCase):
         }])
 
 
+class StaticAssetsTests(TestCase):
+    """Une accolade perdue lors d'une fusion désactive toutes les règles CSS qui la suivent."""
+
+    def test_css_braces_are_balanced(self):
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+
+        for css in Path(settings.BASE_DIR, "static").rglob("*.css"):
+            text = re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)
+            text = re.sub(r"\"[^\"]*\"|'[^']*'", "", text)
+            depth = 0
+            for char in text:
+                depth += {"{": 1, "}": -1}.get(char, 0)
+                self.assertGreaterEqual(depth, 0, f"accolade fermante en trop dans {css.name}")
+            self.assertEqual(depth, 0, f"accolade non fermée dans {css.name}")
+            self.assertNotRegex(text, r"^(<<<<<<<|=======|>>>>>>>)", f"marqueur de conflit dans {css.name}")
+
+
 class ExpenseUrlsTests(IntegrationFixtures, TestCase):
     def test_expenses_mounted_under_group_and_linked(self):
         self.assertEqual(reverse("expenses:list", kwargs={"gid": self.group.pk}), f"/groups/{self.group.pk}/expenses/")
