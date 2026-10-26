@@ -67,16 +67,20 @@
                 </p>
 
                 {% if s.forecast %}
-                    <p class="forecast{% if s.forecast.likely_overrun %} forecast-over{% endif %}">
-                        <span class="tag tag-ai">IA</span>
-                        Prévision de fin de mois : <strong>{{ s.forecast.predicted_total|money:group.currency }}</strong>
-                        {% if s.forecast.likely_overrun %}
-                            — dépassement probable de {{ s.forecast.overrun_amount|money:group.currency }}
-                        {% else %}
-                            — dans la limite
+                    <div class="forecast{% if s.forecast.likely_overrun %} forecast-over{% endif %}">
+                        <p class="forecast-line">
+                            <span class="tag tag-ai">IA</span>
+                            Prévision de fin de mois : <strong>{{ s.forecast.predicted_total|money:group.currency }}</strong>
+                            {% if s.forecast.interval_low %}<span class="forecast-method">(entre {{ s.forecast.interval_low|money }} et {{ s.forecast.interval_high|money }})</span>{% endif %}
+                        </p>
+                        {% if s.forecast.risk_percent is not None %}
+                            <p class="forecast-line">
+                                Risque de dépassement :
+                                <span class="risk risk-{{ s.forecast.risk_level }}">{{ s.forecast.risk_percent }} % · {{ s.forecast.risk_label }}</span>
+                                <a href="{% url 'budgets:insights' group.pk %}#analyse-{{ s.budget.pk }}">Pourquoi ?</a>
+                            </p>
                         {% endif %}
-                        <span class="forecast-method">({{ s.forecast.method }})</span>
-                    </p>
+                    </div>
                 {% endif %}
 
                 {% if is_group_admin %}

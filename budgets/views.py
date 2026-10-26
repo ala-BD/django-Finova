@@ -15,6 +15,7 @@ from expenses.services import get_group_expenses
 from groups.services import is_admin
 
 from . import services
+from .ai_model import model_card
 from .forms import BudgetForm, CategoryDeleteForm, CategoryForm, SimulationForm
 from .models import Budget, Category
 
@@ -327,3 +328,39 @@ class RecommendView(GroupMemberRequiredMixin, View):
                 "source": result["source"],
             }
         )
+
+
+class InsightsView(GroupMemberRequiredMixin, GroupContextMixin, TemplateView):
+    """Onglet « Analyse IA » : risque de dépassement de chaque budget du mois en cours."""
+
+    template_name = "budgets/insights.html"
+    active_tab = "insights"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        group = self.get_group()
+        context.update(
+            month=services.current_month(),
+            rows=services.group_analyses(group, user=self.request.user),
+            card=model_card(),
+        )
+        return context
+
+
+class BudgetInsightApiView(GroupMemberRequiredMixin, View):
+    """API JSON : analyse IA d'un budget (prévision, fourchette, risque, facteurs)."""
+
+    def get(self, request, *args, **kwargs):
+        budget = get_object_or_404(
+            Budget.objects.select_related("group", "category"), pk=kwargs["pk"], group=self.get_group()
+        )
+        analysis = services.forecast_budget(budget, user=request.user)
+        return JsonResponse({"ok": True, **services.analysis_payload(budget, analysis)})
+
+
+class MonthSummaryApiView(GroupMemberRequiredMixin, View):
+    """API JSON : résumé du mois rédigé par le LLM (appelé en fetch, peut prendre quelques secondes)."""
+
+    def get(self, request, *args, **kwargs):
+        result = services.month_summary(self.get_group(), user=request.user)
+        return JsonResponse({"ok": True, "summary": result["summary"], "source": result["source"]})

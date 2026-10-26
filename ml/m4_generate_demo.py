@@ -77,7 +77,7 @@ def generate(seed=SEED):
 
 
 def main():
-    rows = generate()
+    rows = generate(SEED)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["date", "category", "label", "amount"])

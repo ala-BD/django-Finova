@@ -345,13 +345,79 @@ def _log_ai(feature: str, started: float, success: bool, user=None, error: str =
     return latency
 
 
+def risk_level(probability: float | None, threshold: float) -> tuple[str, str]:
+    """Faible sous le seuil du modèle (choisi par validation croisée), élevé à partir de 70 %."""
+    if probability is None:
+        return "unknown", "indisponible"
+    if probability >= 0.7:
+        return "high", "élevé"
+    if probability >= threshold:
+        return "medium", "modéré"
+    return "low", "faible"
+
+
+def group_pace_inputs(group, month: date, day: int) -> tuple[Decimal, Decimal]:
+    """Dépensé par tout le groupe du 1er au jour d, et la moyenne habituelle à la même date."""
+    first, last = month_bounds(month)
+    cutoff = first.replace(day=min(day, last.day))
+    spent = get_group_expenses(group, period=(first, cutoff)).aggregate(total=Sum("amount"))["total"] or ZERO
+    first_known = (
+        get_group_expenses(group).order_by("expense_date").values_list("expense_date", flat=True).first()
+    )
+    if first_known is None:
+        return spent, ZERO
+    history = []
+    past = add_months(month, -1)
+    while past >= first_of_month(first_known) and len(history) < HISTORY_MONTHS:
+        history.append(past)
+        past = add_months(past, -1)
+    if not history:
+        return spent, ZERO
+    totals = []
+    for past in history:
+        past_first, past_last = month_bounds(past)
+        past_cutoff = past_first.replace(day=min(day, past_last.day))
+        totals.append(
+            get_group_expenses(group, period=(past_first, past_cutoff)).aggregate(total=Sum("amount"))["total"]
+            or ZERO
+        )
+    return spent, sum(totals) / len(totals)
+
+
+def risk_factors(features: dict, day: int, days_in_month: int, months_of_history: int) -> list[str]:
+    """Explications lisibles de la probabilité, tirées des variables du modèle."""
+    factors = [f"{features['spent_ratio'] * 100:.0f} % du budget déjà consommé au jour {day} sur {days_in_month}"]
+    if months_of_history:
+        pace = features["pace_vs_usual"]
+        if pace >= 1.1:
+            factors.append(f"dépenses {(pace - 1) * 100:.0f} % au-dessus de l'habitude à la même date")
+        elif pace <= 0.9:
+            factors.append(f"dépenses {(1 - pace) * 100:.0f} % en dessous de l'habitude à la même date")
+        else:
+            factors.append("dépenses proches de l'habitude à la même date")
+        over = round(features["history_over_rate"] * months_of_history)
+        if over:
+            factors.append(f"cette limite aurait été dépassée {over} mois sur les {months_of_history} derniers")
+    group_pace = features["group_pace_vs_usual"]
+    if group_pace >= 1.1:
+        factors.append(f"le groupe dépense {(group_pace - 1) * 100:.0f} % de plus que d'habitude ce mois-ci")
+    elif group_pace <= 0.9:
+        factors.append(f"le groupe dépense {(1 - group_pace) * 100:.0f} % de moins que d'habitude ce mois-ci")
+    return factors
+
+
 def forecast_budget(budget: Budget, today: date | None = None, user=None, save: bool = True) -> dict | None:
     """
-    Prévision du total de fin de mois pour un budget du mois en cours.
+    Analyse IA d'un budget du mois en cours :
+    - prévision du total de fin de mois (profil historique, budgets/forecasting.py) ;
+    - fourchette à 80 % autour de cette prévision ;
+    - probabilité de dépassement (modèle entraîné, budgets/ai_model.py) et ses facteurs.
 
     Retourne None pour un mois passé ou futur (la prévision n'a de sens que
     pendant le mois). Une seule BudgetForecast est gardée par budget et par jour.
     """
+    from .ai_model import load_overrun_model, predict_overrun_probability
+
     today = today or timezone.localdate()
     if first_of_month(today) != budget.month:
         return None
@@ -359,13 +425,40 @@ def forecast_budget(budget: Budget, today: date | None = None, user=None, save: 
     days_in_month = month_bounds(budget.month)[1].day
     history = monthly_history(budget.group, budget.category, budget.month)
     history_months = [row["month"] for row in history]
+    history_totals = [row["total"] for row in history]
+    history_cumulative = cumulative_at_day(budget.group, budget.category, history_months, today.day)
     result = forecasting.forecast_month_total(
         daily_amounts(budget.group, budget.category, budget.month, today.day),
         days_in_month,
-        [row["total"] for row in history],
-        cumulative_at_day(budget.group, budget.category, history_months, today.day),
+        history_totals,
+        history_cumulative,
     )
     limit = effective_limit(budget)
+
+    group_spent, group_usual = group_pace_inputs(budget.group, budget.month, today.day)
+    features = forecasting.overrun_features(
+        result.spent_so_far,
+        result.predicted_total,
+        limit,
+        today.day,
+        days_in_month,
+        history_totals,
+        history_cumulative,
+        group_spent=group_spent,
+        group_usual_spent=group_usual,
+    )
+    bundle = load_overrun_model()
+    if result.spent_so_far > limit:
+        probability = 1.0  # déjà dépassé : rien à prédire
+    else:
+        probability = predict_overrun_probability(features)
+    threshold = bundle["threshold"] if bundle else 0.5
+    level, level_label = risk_level(probability, threshold)
+    low = high = None
+    if bundle:
+        low, high = forecasting.forecast_interval(
+            result.predicted_total, result.spent_so_far, features["day_fraction"], bundle["quantiles"]
+        )
     latency = _log_ai("forecast", started, True, user)
 
     if save:
@@ -377,17 +470,29 @@ def forecast_budget(budget: Budget, today: date | None = None, user=None, save: 
                 forecast = BudgetForecast(budget=budget)
             forecast.predicted_total = result.predicted_total
             forecast.baseline_total = result.baseline_total
+            forecast.interval_low = low
+            forecast.interval_high = high
+            forecast.overrun_probability = probability
             forecast.method = result.method
             forecast.save()
 
     return {
         "predicted_total": result.predicted_total,
         "baseline_total": result.baseline_total,
+        "interval_low": low,
+        "interval_high": high,
         "spent_so_far": result.spent_so_far,
         "method": result.method,
         "limit": limit,
         "likely_overrun": result.predicted_total > limit,
         "overrun_amount": max(result.predicted_total - limit, ZERO),
+        "overrun_probability": probability,
+        "risk_percent": round(probability * 100) if probability is not None else None,
+        "risk_level": level,
+        "risk_label": level_label,
+        "factors": risk_factors(features, today.day, days_in_month, len(history_totals)),
+        "features": features,
+        "model_version": bundle["version"] if bundle else None,
         "latency_ms": latency,
     }
 
@@ -449,3 +554,115 @@ def recommend_budget(group, category, month: date, user=None) -> dict:
         "explanation": explanation,
         "source": source,
     }
+
+
+# --- IA : analyse du mois et résumé par le LLM ------------------------------------------
+
+
+def group_analyses(group, user=None, today: date | None = None) -> list[dict]:
+    """Analyse IA de chaque budget du mois en cours, du plus risqué au moins risqué."""
+    today = today or timezone.localdate()
+    analyses = []
+    for status in group_budget_statuses(group, first_of_month(today)):
+        analysis = forecast_budget(status["budget"], today=today, user=user)
+        analyses.append({"status": status, "analysis": analysis})
+    return sorted(analyses, key=lambda row: -(row["analysis"]["overrun_probability"] or 0))
+
+
+def fallback_summary(rows: list[dict], currency: str) -> str:
+    if not rows:
+        return "Aucun budget n'est défini ce mois-ci : rien à analyser."
+    risky = [row for row in rows if row["analysis"]["risk_level"] in ("high", "medium")]
+    if not risky:
+        subject = "Le budget du mois est" if len(rows) == 1 else f"Les {len(rows)} budgets du mois sont"
+        return f"{subject} sous contrôle : aucun risque de dépassement notable."
+    parts = [
+        f"{row['status']['category'].name} ({row['analysis']['risk_percent']} %, prévision "
+        f"{row['analysis']['predicted_total']:.0f} {currency} pour {row['analysis']['limit']:.0f})"
+        for row in risky[:3]
+    ]
+    return (
+        f"{len(risky)} budget(s) sur {len(rows)} risquent de dépasser : "
+        + " ; ".join(parts)
+        + ". Réduire ces dépenses d'ici la fin du mois permettrait de rester dans les limites."
+    )
+
+
+def month_summary(group, user=None, today: date | None = None) -> dict:
+    """
+    Résumé du mois en 2 à 3 phrases, rédigé par le LLM à partir des seuls agrégats
+    (catégorie, limite, prévision, risque) : aucune dépense individuelle n'est envoyée.
+    Repli sur un texte généré par règles si l'API échoue ou si la réponse ne cite
+    aucune des catégories à risque.
+    """
+    from core.ai import call_llm
+
+    rows = group_analyses(group, user=user, today=today)
+    fallback = fallback_summary(rows, group.currency)
+    if not rows:
+        return {"summary": fallback, "source": "fallback", "rows": rows}
+
+    lines = "\n".join(
+        f"- {row['status']['category'].name} : limite {row['analysis']['limit']:.0f}, "
+        f"déjà dépensé {row['analysis']['spent_so_far']:.0f}, prévision {row['analysis']['predicted_total']:.0f}, "
+        f"risque de dépassement {row['analysis']['risk_percent']} %"
+        for row in rows
+    )
+    prompt = (
+        "Tu es l'assistant budgétaire de Finova, une application de dépenses partagées. "
+        "En 2 ou 3 phrases en français, résume la situation des budgets de ce mois pour le groupe "
+        "et donne un conseil concret. Utilise uniquement les chiffres ci-dessous, n'en invente aucun. "
+        f"Devise : {group.currency}.\n{lines}"
+    )
+    risky_names = [
+        row["status"]["category"].name for row in rows if row["analysis"]["risk_level"] in ("high", "medium")
+    ]
+    try:
+        answer = call_llm("month_summary", prompt, module="budgets", user=user)
+        text = " ".join((answer.get("text", "") if isinstance(answer, dict) else str(answer or "")).split())
+        mentions_risk = not risky_names or any(name.lower() in text.lower() for name in risky_names)
+        if text and len(text) <= 700 and mentions_risk:
+            return {"summary": text, "source": "llm", "rows": rows}
+    except Exception as exc:  # l'IA n'est jamais bloquante
+        logger.info("Résumé du mois : repli sur le texte par règles (%s).", exc)
+    return {"summary": fallback, "source": "fallback", "rows": rows}
+
+
+def analysis_payload(budget: Budget, analysis: dict | None) -> dict:
+    """Représentation JSON d'une analyse (API /insight/)."""
+
+    def money(value):
+        return f"{value:.3f}" if value is not None else None
+
+    payload = {
+        "budget_id": budget.pk,
+        "category": budget.category.name,
+        "month": budget.month.strftime("%Y-%m"),
+        "available": analysis is not None,
+    }
+    if analysis is None:
+        payload["reason"] = "L'analyse IA ne concerne que le mois en cours."
+        return payload
+    payload.update(
+        {
+            "limit": money(analysis["limit"]),
+            "spent_so_far": money(analysis["spent_so_far"]),
+            "forecast": {
+                "predicted_total": money(analysis["predicted_total"]),
+                "interval_80": [money(analysis["interval_low"]), money(analysis["interval_high"])],
+                "naive_baseline": money(analysis["baseline_total"]),
+                "method": analysis["method"],
+            },
+            "overrun_risk": {
+                "probability": round(analysis["overrun_probability"], 3)
+                if analysis["overrun_probability"] is not None
+                else None,
+                "level": analysis["risk_level"],
+                "label": analysis["risk_label"],
+                "factors": analysis["factors"],
+            },
+            "model_version": analysis["model_version"],
+            "latency_ms": analysis["latency_ms"],
+        }
+    )
+    return payload

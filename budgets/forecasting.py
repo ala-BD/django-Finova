@@ -145,3 +145,93 @@ def recommend_limit(history_totals, margin=Decimal("0.10"), step=Decimal("10")) 
     average = sum(recent) / len(recent)
     raw = average * (1 + Decimal(margin))
     return (raw / step).to_integral_value(rounding=ROUND_CEILING) * step
+
+
+# --- Risque de dépassement (modèle entraîné, voir ml/m4_train_overrun.py) ------------
+
+OVERRUN_FEATURES = (
+    "day_fraction",
+    "spent_ratio",
+    "forecast_ratio",
+    "pace_vs_usual",
+    "history_cv",
+    "history_over_rate",
+    "group_pace_vs_usual",
+)
+
+
+def _clip(value: float, low: float = 0.0, high: float = 3.0) -> float:
+    return max(low, min(high, value))
+
+
+def pace_ratio(spent, usual_spent) -> float:
+    """Dépensé à ce jour / dépensé d'habitude à la même date (1 = rythme habituel)."""
+    spent, usual_spent = float(spent), float(usual_spent)
+    if usual_spent > 0:
+        return _clip(spent / usual_spent)
+    return 1.0 if spent == 0 else 2.0
+
+
+def overrun_features(
+    spent,
+    forecast,
+    limit,
+    day: int,
+    days_in_month: int,
+    history_totals=(),
+    history_cumulative_at_day=(),
+    group_spent=0,
+    group_usual_spent=0,
+) -> dict:
+    """
+    Variables du modèle de risque, calculées de la même façon à l'entraînement
+    et en production (sinon le modèle verrait des données différentes).
+
+    - day_fraction      : avancement du mois (0 à 1)
+    - spent_ratio       : part du budget déjà consommée
+    - forecast_ratio    : prévision de fin de mois / limite
+    - pace_vs_usual     : dépensé à ce jour / dépensé d'habitude à la même date
+    - history_cv        : irrégularité des mois passés (écart-type / moyenne)
+    - history_over_rate : part des mois passés qui auraient dépassé cette limite
+    - group_pace_vs_usual : même rapport que pace_vs_usual, toutes catégories du
+      groupe confondues (un mois chargé l'est souvent partout : invités, fêtes…)
+    """
+    from statistics import pstdev
+
+    limit = float(limit)
+    spent = float(spent)
+    history_totals = [float(total) for total in history_totals]
+    usual_spent = mean(float(c) for c in history_cumulative_at_day) if history_cumulative_at_day else 0.0
+    average = mean(history_totals) if history_totals else 0.0
+    return {
+        "day_fraction": day / days_in_month,
+        "spent_ratio": _clip(spent / limit),
+        "forecast_ratio": _clip(float(forecast) / limit),
+        "pace_vs_usual": pace_ratio(spent, usual_spent),
+        "history_cv": _clip(pstdev(history_totals) / average) if len(history_totals) > 1 and average else 0.0,
+        "history_over_rate": mean(1.0 if total > limit else 0.0 for total in history_totals)
+        if history_totals
+        else 0.5,
+        "group_pace_vs_usual": pace_ratio(group_spent, group_usual_spent),
+    }
+
+
+def day_bucket(day_fraction: float) -> str:
+    if day_fraction < 1 / 3:
+        return "debut"
+    if day_fraction < 2 / 3:
+        return "milieu"
+    return "fin"
+
+
+def forecast_interval(predicted, spent, day_fraction: float, quantiles: dict) -> tuple[Decimal, Decimal]:
+    """
+    Fourchette à 80 % : on applique à la prévision les quantiles 10 % et 90 %
+    du rapport réel / prévu observés à l'entraînement, au même moment du mois.
+    La borne basse ne descend jamais sous ce qui est déjà dépensé.
+    """
+    low_ratio, high_ratio = quantiles[day_bucket(day_fraction)]
+    predicted = float(predicted)
+    low = max(predicted * low_ratio, float(spent))
+    high = max(predicted * high_ratio, low)
+    return to_decimal(low), to_decimal(high)

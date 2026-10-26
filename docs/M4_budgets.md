@@ -136,6 +136,66 @@ Cible du rapport (gain ≥ 10 %) atteinte. Latence du calcul : 0,07 ms en moyenn
 le 1er donnerait une prévision de 36 000 TND. Elle reste utile comme repli quand une catégorie
 n'a encore aucun historique. Données générées : à annoncer clairement à la soutenance.
 
+### Risque de dépassement : modèle d'apprentissage automatique (onglet « Analyse IA »)
+
+**Question posée au modèle :** « au jour d, ce budget sera-t-il dépassé à la fin du mois ? »
+Réponse : une **probabilité** (« Risque 78 % · élevé »), plus fine qu'un simple oui/non.
+
+- **Modèle :** gradient boosting (scikit-learn), choisi par validation croisée face à la régression
+  logistique, sauvegardé dans `ml/models/m4_overrun_model.joblib` et chargé une fois au démarrage.
+- **7 variables** (`budgets/forecasting.py`, `overrun_features`, mêmes calculs à l'entraînement et en
+  production) : avancement du mois, part du budget consommée, prévision / limite, rythme comparé à
+  l'habitude (catégorie et groupe entier), irrégularité des mois passés, part des mois passés au-dessus de la limite.
+- **Entraînement** (`python ml/m4_train_overrun.py`) : 60 colocations simulées ; séparation **par groupe**
+  (45 pour apprendre, 15 jamais vus pour tester), donc aucune fuite. Le seuil de décision (0,40) est choisi
+  par validation croisée sur l'entraînement uniquement.
+- **Fourchette à 80 %** autour de la prévision, apprise à partir des erreurs passées : 81 % des totaux
+  réels tombent dedans sur le test.
+- **Explications** : chaque probabilité est accompagnée de ses facteurs (« dépenses 33 % au-dessus de
+  l'habitude à la même date », « le groupe dépense 20 % de plus que d'habitude ce mois-ci »).
+
+| Méthode (test, 8 910 situations) | Précision | Rappel | F1 |
+|---|---:|---:|---:|
+| **Modèle IA** | 0,807 | **0,859** | **0,832** |
+| Règle « prévision > limite » | 0,820 | 0,772 | 0,795 |
+| Règle « déjà 80 % consommés » | 0,511 | 0,490 | 0,500 |
+
+ROC-AUC 0,947 (contre 0,874 pour la prévision seule). Le gain est le plus fort en début de mois
+(F1 0,752 contre 0,689), quand l'alerte est la plus utile. Prédiction en 0,25 ms. Détail, matrice de
+confusion et importance des variables : [ml/results/m4_overrun_report.md](../ml/results/m4_overrun_report.md).
+**Limite à annoncer :** données générées ; dans le simulateur, un mois chargé l'est pour toutes les
+catégories, ce qui rend la variable « rythme du groupe » très utile. Hypothèse plausible, à confirmer sur données réelles.
+
+### API JSON de l'IA
+
+| Méthode | URL | Réponse |
+|---|---|---|
+| GET | `/groups/<gid>/budgets/<id>/insight/` | prévision, fourchette, naïve, probabilité, niveau, facteurs, version du modèle, latence |
+| GET | `/groups/<gid>/budgets/insights/summary/` | résumé du mois rédigé par le LLM (`source` : `llm` ou `fallback`) |
+| GET | `/groups/<gid>/budgets/recommend/?category=<id>` | limite conseillée et explication |
+
+Réservées aux membres du groupe (403 sinon, 404 pour un budget d'un autre groupe). Exemple :
+
+```json
+{
+  "ok": true, "category": "Alimentation", "month": "2026-10",
+  "limit": "650.000", "spent_so_far": "549.248",
+  "forecast": {"predicted_total": "633.925", "interval_80": ["549.248", "764.133"],
+               "naive_baseline": "496.332", "method": "profil historique"},
+  "overrun_risk": {"probability": 0.129, "level": "low", "label": "faible",
+                   "factors": ["84 % du budget déjà consommé au jour 26 sur 31",
+                               "dépenses 33 % au-dessus de l'habitude à la même date"]},
+  "model_version": "m4-overrun-1.0", "latency_ms": 19
+}
+```
+
+### Résumé du mois par le LLM
+
+En haut de l'onglet « Analyse IA », un résumé de 2 à 3 phrases est demandé au LLM (`core.ai.call_llm`)
+en asynchrone (`fetch`, indicateur « Analyse en cours… »). Le LLM ne reçoit **que des agrégats**
+(catégorie, limite, prévision, risque), jamais une dépense ou un nom de membre. La réponse est refusée
+si elle ne cite aucune catégorie à risque ; un résumé construit par règles prend alors le relais.
+
 ### Recommandation de budget
 
 Limite conseillée = moyenne des 3 derniers mois + 10 %, arrondie à la dizaine supérieure
@@ -153,7 +213,7 @@ coverage run --source=budgets,accounts manage.py test budgets accounts
 coverage report --omit="*/migrations/*,*/tests/*,*/tests.py"
 ```
 
-87 tests, **97 % de couverture** sur `budgets` + `accounts`. Aucun appel réseau : `notify` et
+105 tests, **97 % de couverture** sur `budgets` + `accounts`. Aucun appel réseau : `notify` et
 `call_llm` sont simulés (mock).
 
 - `test_models` : unicité budget/catégorie/mois, limite > 0, nom unique insensible à la casse, PROTECT.
@@ -182,7 +242,9 @@ animation désactivée si `prefers-reduced-motion`, mise en page fluide jusqu'au
    ajouter dans l'admin (`/admin/expenses/expense/add/`) une dépense qui fait passer un budget
    au-dessus de 100 % → rafraîchir la page des budgets.
 5. **Simulateur** : Restaurants, 20 %, 360 TND → résultat sans rechargement.
-6. Se reconnecter en `yahya` : boutons de gestion absents, `/budgets/new/` → 403.
+6. **Analyse IA** : résumé de l'assistant, cartes triées par risque, « Pourquoi ce risque ? »,
+   bouton « Recalculer via l'API », lien « Voir le JSON », puis la fiche du modèle (F1, AUC).
+7. Se reconnecter en `yahya` : boutons de gestion absents, `/budgets/new/` → 403.
 
 ## 8. Questions probables à l'oral
 

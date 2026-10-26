@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static budget_tags %}
+{% block title %}Analyse IA · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<div class="page-header">
+    <h1><span class="tag tag-ai tag-lg" aria-hidden="true">IA</span> Analyse IA de {{ month|date:"F Y" }}</h1>
+</div>
+<p class="lead">Pour chaque budget du mois en cours : la prévision de fin de mois, sa fourchette et la probabilité de dépasser la limite, calculée par un modèle d'apprentissage automatique.</p>
+
+<section class="result-card ai-summary" aria-labelledby="summary-title">
+    <h2 id="summary-title">Résumé de l'assistant</h2>
+    <div id="ai-summary" class="ai-output" aria-live="polite" aria-busy="false"
+         data-url="{% url 'budgets:insights_summary' group.pk %}">
+        <p class="muted">Le résumé est rédigé par le modèle de langage à partir des seuls totaux du mois.</p>
+    </div>
+    <button type="button" class="btn btn-ghost" id="ai-summary-button" hidden>Générer le résumé</button>
+</section>
+
+{% if rows %}
+    <ul class="budget-list insight-list" role="list">
+        {% for row in rows %}
+            {% with s=row.status a=row.analysis %}
+                <li class="budget-card insight-card" id="analyse-{{ s.budget.pk }}" style="--category-color: {{ s.category.color }}"
+                    data-api="{% url 'budgets:insight_api' group.pk s.budget.pk %}" data-currency="{{ group.currency }}">
+                    <div class="budget-card-head">
+                        <h2 class="budget-title">
+                            {% if s.category.icon %}<span aria-hidden="true">{{ s.category.icon }}</span>{% endif %}
+                            {{ s.category.name }}
+                        </h2>
+                        <p class="risk risk-{{ a.risk_level }}" data-field="risk">
+                            Risque {% if a.risk_percent is not None %}{{ a.risk_percent }} %{% endif %} · {{ a.risk_label }}
+                        </p>
+                    </div>
+
+                    <div class="risk-meter" role="meter" aria-label="Probabilité de dépassement"
+                         aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ a.risk_percent|default:0 }}"
+                         aria-valuetext="{{ a.risk_percent|default:0 }} %, risque {{ a.risk_label }}">
+                        <span class="risk-meter-fill risk-bg-{{ a.risk_level }}" style="width: {{ a.risk_percent|default:0 }}%" data-field="meter"></span>
+                    </div>
+
+                    <dl class="result-list">
+                        <div><dt>Déjà dépensé</dt><dd data-field="spent">{{ a.spent_so_far|money:group.currency }}</dd></div>
+                        <div><dt>Limite (avec report)</dt><dd>{{ a.limit|money:group.currency }}</dd></div>
+                        <div><dt>Prévision de fin de mois</dt><dd data-field="predicted">{{ a.predicted_total|money:group.currency }}</dd></div>
+                        {% if a.interval_low %}
+                            <div><dt>Fourchette à 80 %</dt><dd data-field="interval">{{ a.interval_low|money }} – {{ a.interval_high|money }}</dd></div>
+                        {% endif %}
+                        {% if a.baseline_total %}
+                            <div><dt>Prévision naïve (moyenne historique)</dt><dd>{{ a.baseline_total|money:group.currency }}</dd></div>
+                        {% endif %}
+                    </dl>
+
+                    <h3 class="factors-title">Pourquoi ce risque ?</h3>
+                    <ul class="factors" data-field="factors">
+                        {% for factor in a.factors %}<li>{{ factor }}</li>{% endfor %}
+                    </ul>
+
+                    <p class="card-actions">
+                        <button type="button" class="btn btn-ghost js-refresh" hidden>Recalculer via l'API</button>
+                        <a href="{% url 'budgets:insight_api' group.pk s.budget.pk %}">Voir le JSON<span class="visually-hidden"> de l'analyse {{ s.category.name }}</span></a>
+                        <span class="help" data-field="latency">Calculé en {{ a.latency_ms }} ms</span>
+                    </p>
+                </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-state">
+        <p>Aucun budget défini ce mois-ci : définissez-en un pour obtenir une analyse.</p>
+    </div>
+{% endif %}
+
+<section class="model-card" aria-labelledby="model-title">
+    <h2 id="model-title">Fiche du modèle</h2>
+    {% if card %}
+        <p>
+            <strong>{% if card.chosen_model == "gradient_boosting" %}Gradient boosting{% else %}Régression logistique{% endif %}</strong>
+            (scikit-learn, choisi par validation croisée face à {% if card.chosen_model == "gradient_boosting" %}la régression logistique{% else %}le gradient boosting{% endif %}),
+            version <code>{{ card.version }}</code>, entraîné sur {{ card.dataset.groups }} colocations simulées
+            et testé sur {{ card.dataset.test_groups }} groupes jamais vus ({{ card.dataset.test_rows }} situations).
+        </p>
+        <div class="table-wrap">
+            <table class="data-table">
+                <caption>Performances sur le jeu de test (seuil {{ card.threshold }})</caption>
+                <thead>
+                    <tr><th scope="col">Méthode</th><th scope="col" class="num">Précision</th><th scope="col" class="num">Rappel</th><th scope="col" class="num">F1</th></tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">Modèle IA</th><td class="num">{{ card.test.model.precision }}</td><td class="num">{{ card.test.model.recall }}</td><td class="num"><strong>{{ card.test.model.f1 }}</strong></td></tr>
+                    <tr><th scope="row">Règle « prévision &gt; limite »</th><td class="num">{{ card.test.rule_forecast_over_limit.precision }}</td><td class="num">{{ card.test.rule_forecast_over_limit.recall }}</td><td class="num">{{ card.test.rule_forecast_over_limit.f1 }}</td></tr>
+                    <tr><th scope="row">Règle « déjà 80 % consommés »</th><td class="num">{{ card.test.rule_spent_80.precision }}</td><td class="num">{{ card.test.rule_spent_80.recall }}</td><td class="num">{{ card.test.rule_spent_80.f1 }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="help">
+            ROC-AUC {{ card.test.model.roc_auc }} · fourchette juste dans {% widthratio card.interval.coverage_test 1 100 %} % des cas (cible 80 %)
+            · prédiction en {{ card.latency_ms }} ms · données générées, annoncées comme telles.
+        </p>
+    {% else %}
+        <p>Modèle indisponible : lancer <code>python ml/m4_train_overrun.py</code>. La prévision reste affichée sans probabilité.</p>
+    {% endif %}
+</section>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/budgets.js' %}"></script>{% endblock %}

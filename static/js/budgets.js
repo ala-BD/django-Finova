@@ -180,8 +180,97 @@
         });
     }
 
+    /* --- Analyse IA : résumé du mois (LLM) --- */
+    function initSummary() {
+        const output = document.getElementById("ai-summary");
+        const button = document.getElementById("ai-summary-button");
+        if (!output || !button) {
+            return;
+        }
+        button.hidden = false;
+
+        async function load() {
+            button.disabled = true;
+            output.setAttribute("aria-busy", "true");
+            output.textContent = "Analyse en cours…";
+            try {
+                const { response, data } = await getJson(output.dataset.url);
+                output.replaceChildren();
+                if (!response.ok || !data.ok) {
+                    output.textContent = "Résumé indisponible pour le moment.";
+                    return;
+                }
+                output.append(element("p", "", data.summary));
+                output.append(
+                    element(
+                        "span",
+                        "ai-source",
+                        data.source === "llm" ? "Rédigé par le modèle de langage." : "Résumé standard (modèle de langage indisponible)."
+                    )
+                );
+                button.textContent = "Régénérer le résumé";
+            } catch (error) {
+                output.textContent = "Erreur réseau : réessayez.";
+            } finally {
+                output.setAttribute("aria-busy", "false");
+                button.disabled = false;
+            }
+        }
+
+        button.addEventListener("click", load);
+        load();
+    }
+
+    /* --- Analyse IA : recalcul d'une carte via l'API JSON --- */
+    function initInsightRefresh() {
+        document.querySelectorAll(".insight-card[data-api]").forEach(function (card) {
+            const button = card.querySelector(".js-refresh");
+            if (!button) {
+                return;
+            }
+            button.hidden = false;
+            button.addEventListener("click", async function () {
+                const field = (name) => card.querySelector('[data-field="' + name + '"]');
+                const currency = card.dataset.currency;
+                button.disabled = true;
+                card.setAttribute("aria-busy", "true");
+                field("latency").textContent = "Analyse en cours…";
+                try {
+                    const { data } = await getJson(card.dataset.api);
+                    if (!data.ok || !data.available) {
+                        field("latency").textContent = data.reason || "Analyse indisponible.";
+                        return;
+                    }
+                    const risk = data.overrun_risk;
+                    const percent = risk.probability === null ? 0 : Math.round(risk.probability * 100);
+                    field("risk").className = "risk risk-" + risk.level;
+                    field("risk").textContent = "Risque " + percent + " % · " + risk.label;
+                    field("meter").className = "risk-meter-fill risk-bg-" + risk.level;
+                    field("meter").style.width = percent + "%";
+                    field("meter").parentElement.setAttribute("aria-valuenow", percent);
+                    field("meter").parentElement.setAttribute("aria-valuetext", percent + " %, risque " + risk.label);
+                    field("spent").textContent = formatMoney(data.spent_so_far, currency);
+                    field("predicted").textContent = formatMoney(data.forecast.predicted_total, currency);
+                    if (field("interval") && data.forecast.interval_80[0]) {
+                        field("interval").textContent =
+                            formatMoney(data.forecast.interval_80[0]) + " – " + formatMoney(data.forecast.interval_80[1]);
+                    }
+                    field("factors").replaceChildren(...risk.factors.map((text) => element("li", "", text)));
+                    field("latency").textContent = "Recalculé via l'API en " + data.latency_ms + " ms";
+                } catch (error) {
+                    field("latency").textContent = "Erreur réseau : réessayez.";
+                } finally {
+                    card.setAttribute("aria-busy", "false");
+                    button.disabled = false;
+                }
+            });
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         initRecommendation();
         initSimulator();
+        initSummary();
+        initInsightRefresh();
     });
 })();

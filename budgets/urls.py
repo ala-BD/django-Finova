@@ -15,6 +15,10 @@ urlpatterns = [
     path(f"{group_prefix}budgets/<int:pk>/delete/", views.BudgetDeleteView.as_view(), name="delete"),
     path(f"{group_prefix}budgets/simulate/", views.SimulateView.as_view(), name="simulate"),
     path(f"{group_prefix}budgets/recommend/", views.RecommendView.as_view(), name="recommend"),
+    # Analyse IA (page + API JSON)
+    path(f"{group_prefix}budgets/insights/", views.InsightsView.as_view(), name="insights"),
+    path(f"{group_prefix}budgets/insights/summary/", views.MonthSummaryApiView.as_view(), name="insights_summary"),
+    path(f"{group_prefix}budgets/<int:pk>/insight/", views.BudgetInsightApiView.as_view(), name="insight_api"),
     # Catégories d'un groupe
     path(f"{group_prefix}categories/", views.CategoryListView.as_view(), name="categories"),
     path(f"{group_prefix}categories/new/", views.CategoryCreateView.as_view(), name="category_create"),

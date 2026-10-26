@@ -126,6 +126,13 @@ class BudgetForecast(models.Model):
     baseline_total = models.DecimalField(
         "prévision naïve", max_digits=12, decimal_places=3, null=True, blank=True
     )
+    interval_low = models.DecimalField(
+        "fourchette basse", max_digits=12, decimal_places=3, null=True, blank=True
+    )
+    interval_high = models.DecimalField(
+        "fourchette haute", max_digits=12, decimal_places=3, null=True, blank=True
+    )
+    overrun_probability = models.FloatField("probabilité de dépassement", null=True, blank=True)
     method = models.CharField("méthode", max_length=32, blank=True)
     created_at = models.DateTimeField("calculée le", auto_now_add=True)
 
