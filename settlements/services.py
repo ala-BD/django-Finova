@@ -7,7 +7,7 @@ Contrat exposé aux autres modules : compute_balances(group) -> {user_id: Decima
 import logging
 import re
 import time
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.apps import apps
 from django.conf import settings
@@ -19,7 +19,7 @@ from core.ai import LLMError, call_llm
 from groups.services import is_admin
 
 from . import risk
-from .models import RepaymentPlan, RiskPrediction, Settlement
+from .models import MILLIME, RepaymentPlan, RiskPrediction, Settlement
 
 logger = logging.getLogger(__name__)
 ZERO = Decimal("0")
@@ -85,7 +85,8 @@ def compute_balances(group) -> dict:
     balances = net_balances(paid, owed, transfers)
     for user_id in group.active_memberships().values_list("user_id", flat=True):
         balances.setdefault(user_id, ZERO)
-    return balances
+    # Arrondi au millime : SQLite renvoie les sommes avec des décimales parasites (1277.370000000000)
+    return {user_id: value.quantize(MILLIME, rounding=ROUND_HALF_UP) for user_id, value in balances.items()}
 
 
 def simplify_debts(balances: dict) -> list[tuple]:

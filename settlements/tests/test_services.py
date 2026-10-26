@@ -81,6 +81,15 @@ class ComputeBalancesTests(SettlementFixturesMixin, TestCase):
         transfer = overview["transfers"][0]
         self.assertEqual((transfer["debtor"], transfer["creditor"]), (self.m_linda, self.m_ala))
 
+    def test_balances_rounded_to_the_millime(self):
+        # SQLite renvoie les sommes M2 avec des décimales parasites
+        flows = ({self.ala.pk: D("1277.370000000000")}, {self.yahya.pk: D("1277.3699999999")})
+        with patch.object(services, "expense_flows", return_value=flows):
+            balances = services.compute_balances(self.group)
+        self.assertEqual(str(balances[self.ala.pk]), "1277.370")
+        self.assertEqual(str(balances[self.yahya.pk]), "-1277.370")
+        self.assertEqual(str(balances[self.linda.pk]), "0.000")
+
     def test_m1_contract_leave_blocked_with_non_zero_balance(self):
         self.settlement(amount="30", status=Settlement.Status.CONFIRMED)
         self.assertEqual(get_member_balance(self.yahya, self.group), D("30"))
