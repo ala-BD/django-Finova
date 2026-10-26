@@ -5,8 +5,9 @@ Contrat exposé aux autres modules : compute_balances(group) -> {user_id: Decima
 """
 
 import logging
+import re
 import time
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.apps import apps
 from django.conf import settings
@@ -419,6 +420,29 @@ FALLBACK_TEMPLATES = {
 MAX_REMINDER_LENGTH = 600
 
 
+def human_amount(amount) -> str:
+    """100.000 → « 100 », 17.500 → « 17,5 » : jamais « 100.000 », lu « cent mille » en français."""
+    text = f"{Decimal(amount).quantize(Decimal('0.001')):f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text.replace(".", ",")
+
+
+AMOUNT_IN_TEXT = re.compile(r"\d{1,3}(?:[   ]\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?")
+
+
+def amounts_in_text(text) -> list[Decimal]:
+    """Montants écrits dans un texte : « 1 200,5 » → 1200.5, « 75,000 » → 75, « 100 000 » → 100000."""
+    values = []
+    for raw in AMOUNT_IN_TEXT.findall(text):
+        normalized = re.sub(r"[   ]", "", raw).replace(",", ".")
+        try:
+            values.append(Decimal(normalized))
+        except InvalidOperation:
+            continue
+    return values
+
+
 def reminder_context(settlement, today=None):
     plan = getattr(settlement, "plan", None)
     amount = settlement.amount
@@ -438,7 +462,7 @@ def reminder_context(settlement, today=None):
 
 def fallback_reminder(tone, context):
     late = f" (en retard de {context['days_late']} jours)" if context["days_late"] else ""
-    return FALLBACK_TEMPLATES[tone].format(late=late, **context)
+    return FALLBACK_TEMPLATES[tone].format(late=late, **{**context, "amount": human_amount(context["amount"])})
 
 
 def generate_reminder(settlement, tone, user=None):
@@ -450,16 +474,17 @@ def generate_reminder(settlement, tone, user=None):
         "Rédige en français un court message de relance (2 à 3 phrases, sans objet ni signature "
         f"formelle) sur un ton {TONES[tone]}, pour une application de partage de dépenses.\n"
         f"Débiteur : {context['debtor']}\nBénéficiaire : {context['creditor']}\n"
-        f"Montant restant : {context['amount']} {context['currency']}\n"
+        f"Montant restant : {human_amount(context['amount'])} {context['currency']} "
+        "(écris ce montant exactement ainsi)\n"
         f"Retard : {context['days_late']} jours\n"
         "Réponds uniquement avec le message."
     )
     started = time.perf_counter()
     try:
         text = call_llm("m3.reminder", prompt, module="settlements", user=user).strip()
-        # Garde-fou : le message doit reprendre le montant (partie entière, le LLM peut écrire 12,5)
-        if not text or len(text) > MAX_REMINDER_LENGTH or str(int(context["amount"])) not in text:
-            raise LLMError("Relance générée invalide (vide, trop longue ou sans le montant).")
+        # Garde-fou : le montant exact doit figurer dans le texte (« 100 000 » pour 100 est refusé)
+        if not text or len(text) > MAX_REMINDER_LENGTH or Decimal(context["amount"]) not in amounts_in_text(text):
+            raise LLMError("Relance générée invalide (vide, trop longue ou montant absent ou faux).")
         source = "llm"
     except LLMError as exc:
         logger.info("Relance LLM indisponible, repli sur le modèle de texte : %s", exc)
