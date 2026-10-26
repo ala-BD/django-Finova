@@ -7,7 +7,10 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# override=True : après une modification de .env, le processus relancé par runserver
+# relit les nouvelles valeurs au lieu de garder celles héritées. En production
+# (Render), il n'y a pas de fichier .env : seules les variables de la plateforme comptent.
+load_dotenv(BASE_DIR / ".env", override=True)
 
 SECRET_KEY = os.environ.get(
     "SECRET_KEY",

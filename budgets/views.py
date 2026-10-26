@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.contrib import messages
@@ -21,6 +22,8 @@ from . import services
 from .ai_model import model_card
 from .forms import BudgetForm, CategoryDeleteForm, CategoryForm, SimulationForm
 from .models import Budget, Category
+
+logger = logging.getLogger(__name__)
 
 
 def decimal_str(value, places=3):
@@ -398,6 +401,7 @@ class BudgetReportEmailView(GroupMemberRequiredMixin, View):
         try:
             email_budget_report(group, month, request.user, to=address)
         except Exception:
+            logger.exception("Envoi du rapport PDF à %s impossible.", address)
             messages.error(request, "L'email n'a pas pu être envoyé. Téléchargez le PDF en attendant.")
         else:
             messages.success(request, f"Rapport envoyé à {address}.")
