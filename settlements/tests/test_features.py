@@ -77,10 +77,20 @@ class NaturalLanguageRulesTests(TestCase):
 class NaturalLanguageLLMTests(TestCase):
     """call_llm simulé : aucun appel réseau."""
 
-    @patch("settlements.nlp.call_llm", return_value='{"receiver_id": 3, "amount": 47.3, "note": "Virement"}')
-    def test_valid_llm_json(self, _):
+    @patch("settlements.nlp.call_llm",
+           return_value='{"receiver_id": 3, "amount": 47.3, "payment_mode": "Virement", "purpose": "les courses"}')
+    def test_valid_llm_json(self, call_llm):
         result = nlp.parse_repayment("j'ai envoyé quarante-sept dinars trente à Linda", MEMBERS)
         self.assertEqual((result["receiver"], result["amount"], result["source"]), (3, D("47.300"), "llm"))
+        self.assertEqual(result["note"], "Pour les courses · Virement")
+        self.assertIn('"Paiement mobile"', call_llm.call_args.args[1])  # liste fermée envoyée au LLM
+
+    @patch("settlements.nlp.call_llm",
+           return_value='{"receiver_id": 1, "amount": 30, "payment_mode": "cash", "purpose": ""}')
+    def test_payment_mode_outside_closed_list_is_ignored(self, _):
+        # « cash » n'est pas un libellé autorisé : le LLM ne fixe pas de note, les règles la complètent
+        result = nlp.parse_repayment("30 dinars à Ala en cash", MEMBERS)
+        self.assertEqual((result["note"], result["source"]), ("Espèces", "llm+regles"))
 
     @patch("settlements.nlp.call_llm", return_value='{"receiver_id": 99, "amount": 30, "note": ""}')
     def test_unknown_member_id_is_rejected_and_completed_by_rules(self, _):

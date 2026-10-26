@@ -32,6 +32,7 @@ PAYMENT_MODES = [
     (r"\b(d17|flouci|e-?dinar|paiement mobile)\b", "Paiement mobile"),
     (r"\bcarte\b", "Carte bancaire"),
 ]
+MODE_LABELS = [label for _, label in PAYMENT_MODES]
 PURPOSE = re.compile(r"\bpour (?:le |la |les |l'|l |mon |ma |mes )?([a-z' -]{3,30}?)(?=$|[.,;!]| (?:en|par|hier|aujourd|ce|cette|a|au)\b)")
 STOPWORDS = {"pour", "avec", "hier", "dinars", "dinar", "rembourse", "remboursement", "paye", "verse",
              "donne", "envoye", "especes", "virement", "cheque", "cash", "aujourd", "matin", "soir"}
@@ -111,10 +112,13 @@ def _extract_json(raw: str) -> dict:
 def parse_with_llm(text: str, members, user=None) -> dict:
     """Lève LLMError ou ValueError si la réponse est inutilisable."""
     roster = "\n".join(f"- id {member_id} : {', '.join(names)}" for member_id, names in members)
+    modes = ", ".join(f'"{label}"' for label in MODE_LABELS)
     prompt = (
         "Extrais un remboursement d'une phrase en français. Réponds UNIQUEMENT avec un objet JSON "
-        '{"receiver_id": <id de la liste ou null>, "amount": <nombre ou null>, "note": "<mode de '
-        'paiement ou objet, court, sinon vide>"}.\n'
+        '{"receiver_id": <id de la liste ou null>, "amount": <nombre ou null>, '
+        f'"payment_mode": <une valeur parmi {modes}, ou "" si non précisé>, '
+        '"purpose": "<objet du remboursement en 1 à 3 mots, sinon vide>"}.\n'
+        "Exemples de modes : cash/liquide = Espèces, D17/Flouci/e-dinar = Paiement mobile.\n"
         f"Membres possibles (le bénéficiaire) :\n{roster}\nPhrase : {text}"
     )
     data = _extract_json(call_llm("m3.parse_repayment", prompt, module="settlements", user=user))
@@ -125,10 +129,14 @@ def parse_with_llm(text: str, members, user=None) -> dict:
             receiver = int(receiver)
         except (TypeError, ValueError):
             receiver = None
+    # Mode validé contre la liste fermée (même libellé que l'analyse locale) ; objet libre, borné
+    mode = data.get("payment_mode") if data.get("payment_mode") in MODE_LABELS else ""
+    purpose = re.sub(r"\s+", " ", str(data.get("purpose") or "")).strip()[:60]
+    note = " · ".join(part for part in (f"Pour {purpose}" if purpose else "", mode) if part)
     return {
         "receiver": receiver if receiver in valid_ids else None,
         "amount": to_amount(data.get("amount")) if data.get("amount") is not None else None,
-        "note": str(data.get("note") or "").strip()[:200],
+        "note": note[:200],
     }
 
 
