@@ -1,75 +1,74 @@
 {% extends "base.html" %}
+{% load static assistant_markdown %}
 {% block title %}Assistant Finova{% endblock %}
 {% block content %}
-<h1>Assistant Finova</h1>
-<section class="assistant-chat" aria-label="Conversation avec l'assistant">
-  <form id="assistant-form" method="post" action="{% url 'automation:assistant_chat' %}">
-    {% csrf_token %}
-    <label for="assistant-question">Votre question</label>
-    <textarea id="assistant-question" name="question" rows="4" maxlength="2000" required placeholder="Ex. Quelles sont mes dépenses ce mois-ci ?"></textarea>
-    <button type="submit">Envoyer</button>
-  </form>
-  <p id="assistant-loading" role="status" aria-live="polite" hidden>Réponse en cours…</p>
-  <p id="assistant-error" role="alert" hidden></p>
-  <div id="assistant-output" aria-live="polite">
-    {% if history %}
-      <h2>Historique</h2>
+<div class="asst">
+  <header class="asst-header">
+    <span class="asst-avatar asst-avatar-lg" aria-hidden="true">✦</span>
+    <div>
+      <h1>Assistant Finova</h1>
+      <p class="asst-subtitle">Posez vos questions sur vos soldes, dépenses et échéances. L'assistant ne lit que les données de vos propres groupes.</p>
+    </div>
+  </header>
+
+  <section class="asst-panel" aria-label="Conversation avec l'assistant">
+    <div id="asst-log" class="asst-log" role="log" aria-live="polite" aria-relevant="additions" tabindex="0"
+         aria-label="Messages de la conversation">
       {% for item in history %}
-        <div class="chat-message">
-          <strong>Vous — {{ item.created_at|date:"d/m/Y H:i" }}</strong>
-          <p>{{ item.question }}</p>
-          <strong>Assistant</strong>
-          <p>{{ item.answer }}</p>
+        <article class="asst-msg asst-msg-user" aria-label="Vous">
+          <div class="asst-bubble">{{ item.question|linebreaksbr }}</div>
+          <time class="asst-time" datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"d/m/Y H:i" }}</time>
+        </article>
+        <article class="asst-msg asst-msg-bot" aria-label="Assistant">
+          <span class="asst-avatar" aria-hidden="true">✦</span>
+          <div class="asst-body">
+            <div class="asst-bubble asst-md">{{ item.answer|markdown }}</div>
+            <div class="asst-meta">
+              <button type="button" class="asst-copy" aria-label="Copier la réponse">Copier</button>
+            </div>
+          </div>
+        </article>
+      {% empty %}
+        <div class="asst-empty" id="asst-empty">
+          <span class="asst-avatar asst-avatar-lg" aria-hidden="true">✦</span>
+          <h2>Bonjour {{ user.get_short_name|default:user.username }} !</h2>
+          <p>Je réponds en langage naturel à partir de vos données Finova. Essayez une suggestion ci-dessous.</p>
         </div>
       {% endfor %}
-    {% else %}
-      <p>Commencez une conversation avec l'assistant.</p>
-    {% endif %}
-  </div>
-</section>
-<script>
-  const form = document.getElementById('assistant-form');
-  const loading = document.getElementById('assistant-loading');
-  const errorBox = document.getElementById('assistant-error');
-  const output = document.getElementById('assistant-output');
+      <article class="asst-msg asst-msg-bot asst-typing" id="asst-typing" hidden aria-label="L'assistant écrit">
+        <span class="asst-avatar" aria-hidden="true">✦</span>
+        <div class="asst-bubble"><span class="asst-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="visually-hidden">L'assistant rédige sa réponse…</span></div>
+      </article>
+    </div>
 
-  form.addEventListener('submit', async function (event) {
-    event.preventDefault();
-    const formData = new FormData(form);
-    loading.hidden = false;
-    errorBox.hidden = true;
-    form.querySelector('button[type="submit"]').disabled = true;
+    <div class="asst-suggestions" role="group" aria-label="Questions suggérées">
+      <button type="button" class="asst-chip" data-question="Combien je dois au total ?">💰 Combien je dois ?</button>
+      <button type="button" class="asst-chip" data-question="Quelles sont mes dépenses ce mois-ci ?">🧾 Mes dépenses du mois</button>
+      <button type="button" class="asst-chip" data-question="Quelles sont mes prochaines échéances ?">📅 Mes prochaines échéances</button>
+      <button type="button" class="asst-chip" data-question="Résume mon mois">✨ Résume mon mois</button>
+    </div>
 
-    try {
-      const response = await fetch(form.action, {
-        method: 'POST',
-        headers: {'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value},
-        body: formData,
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || 'Erreur');
-      }
-      const entry = document.createElement('article');
-      entry.className = 'chat-message';
-      const questionLabel = document.createElement('strong');
-      questionLabel.textContent = 'Vous';
-      const questionText = document.createElement('p');
-      questionText.textContent = formData.get('question');
-      const answerLabel = document.createElement('strong');
-      answerLabel.textContent = 'Assistant';
-      const answerText = document.createElement('p');
-      answerText.textContent = payload.answer;
-      entry.append(questionLabel, questionText, answerLabel, answerText);
-      output.prepend(entry);
-      form.reset();
-    } catch (error) {
-      errorBox.textContent = error.message || 'L’assistant est indisponible.';
-      errorBox.hidden = false;
-    } finally {
-      loading.hidden = true;
-      form.querySelector('button[type="submit"]').disabled = false;
-    }
-  });
-</script>
+    <form id="asst-form" class="asst-composer" method="post" action="{% url 'automation:assistant_chat' %}">
+      {% csrf_token %}
+      <label for="asst-question" class="visually-hidden">Votre question</label>
+      <textarea id="asst-question" name="question" rows="1" maxlength="2000" required
+                placeholder="Posez votre question… ex. « Combien je dois à Ala ? »"
+                aria-describedby="asst-hint"></textarea>
+      <button type="submit" class="asst-send" id="asst-send" aria-label="Envoyer la question">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" fill="currentColor"/>
+        </svg>
+      </button>
+    </form>
+    <p class="asst-hint" id="asst-hint">
+      <span>Entrée pour envoyer · Maj+Entrée pour aller à la ligne</span>
+      <span id="asst-counter" aria-live="off">0 / 2000</span>
+    </p>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/assistant.js' %}"></script>
 {% endblock %}

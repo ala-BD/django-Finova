@@ -3,9 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from automation.forms import RecurringExpenseForm, ReminderRuleForm
+from automation.markdown import render_markdown
 from automation.models import ChatMessage, Notification, RecurringExpense, ReminderRule
 from automation.services import (
     AssistantRequestError,
@@ -223,7 +225,8 @@ def mark_notification_read(request, notification_id):
 
 @login_required
 def assistant_home(request):
-    history = ChatMessage.objects.filter(user=request.user).order_by("-created_at")[:20]
+    # 20 derniers échanges, affichés dans l'ordre chronologique (comme une conversation)
+    history = list(ChatMessage.objects.filter(user=request.user).order_by("-created_at")[:20])[::-1]
     return render(request, "automation/assistant.html", {"history": history})
 
 
@@ -240,10 +243,20 @@ def assistant_chat(request):
         message = answer_assistant_question(request.user, question)
     except AssistantRequestError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
-    except (IntegrationUnavailable, NotImplementedError) as exc:
+    except IntegrationUnavailable as exc:
         return JsonResponse({"error": str(exc)}, status=503)
+    except NotImplementedError:
+        return JsonResponse(
+            {"error": "Cette information n'est pas encore disponible : le module concerné est en cours de développement."},
+            status=503,
+        )
     except ValueError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
     return JsonResponse(
-        {"answer": message.answer, "message_id": message.pk},
+        {
+            "answer": message.answer,
+            "answer_html": render_markdown(message.answer),
+            "message_id": message.pk,
+            "created_at": timezone.localtime(message.created_at).strftime("%d/%m/%Y %H:%M"),
+        },
     )
