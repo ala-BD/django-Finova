@@ -5,6 +5,26 @@
 <article class="auth-card auth-card-wide">
     <h1>Déclarer un remboursement</h1>
     <p class="muted">Vous êtes le payeur. Le bénéficiaire devra confirmer la réception.</p>
+
+    <section class="ai-box" aria-labelledby="nl-title">
+        <h2 id="nl-title"><span class="ai-badge">IA</span> Décrire en une phrase</h2>
+        <form id="nl-form" method="post" action="{% url 'settlements:parse' group.pk %}">
+            {% csrf_token %}
+            <div class="field">
+                <label for="nl-text">Votre phrase</label>
+                <textarea id="nl-text" name="text" class="input" rows="2" maxlength="500"
+                          placeholder="J'ai remboursé 30 dinars à Ala hier en espèces"
+                          aria-describedby="nl-help"></textarea>
+                <p class="help" id="nl-help">Le formulaire ci-dessous sera pré-rempli : vérifiez-le avant d'enregistrer.</p>
+            </div>
+            <button type="submit" class="btn btn-inline btn-ai" id="nl-btn">
+                <span class="btn-text">Remplir le formulaire</span>
+                <span class="spinner" hidden aria-hidden="true"></span>
+            </button>
+        </form>
+        <p id="nl-status" class="muted" role="status" aria-live="polite"></p>
+    </section>
+
     {% include "includes/form_errors.html" with form=form %}
     <form method="post" novalidate>
         {% csrf_token %}
@@ -15,4 +35,52 @@
     </form>
     <p class="auth-alt"><a href="{% url 'settlements:list' group.pk %}">Annuler</a></p>
 </article>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const form = document.getElementById("nl-form");
+    const button = document.getElementById("nl-btn");
+    const status = document.getElementById("nl-status");
+    const sources = {
+        llm: "par l'IA",
+        "llm+regles": "par l'IA, complété par l'analyse locale",
+        regles: "par l'analyse locale (sans IA)",
+    };
+
+    function setLoading(loading) {
+        button.disabled = loading;
+        button.setAttribute("aria-busy", loading ? "true" : "false");
+        button.querySelector(".spinner").hidden = !loading;
+        button.querySelector(".btn-text").textContent = loading ? "Analyse en cours…" : "Remplir le formulaire";
+    }
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setLoading(true);
+        status.textContent = "Analyse en cours…";
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-CSRFToken": window.finova.getCsrfToken() },
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erreur serveur.");
+            if (data.receiver) document.getElementById("id_receiver").value = data.receiver;
+            if (data.amount) document.getElementById("id_amount").value = data.amount;
+            if (data.note) document.getElementById("id_note").value = data.note;
+            let text = `Formulaire pré-rempli ${sources[data.source] || ""} en ${data.latency_ms} ms.`;
+            if (data.missing.length) text += ` À compléter : ${data.missing.join(", ")}.`;
+            status.textContent = text;
+            document.getElementById(data.receiver ? "id_amount" : "id_receiver").focus();
+        } catch (error) {
+            status.textContent = `Analyse impossible : ${error.message}`;
+        } finally {
+            setLoading(false);
+        }
+    });
+})();
+</script>
 {% endblock %}

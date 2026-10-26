@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "sentences": 30,
+    "accuracy": {
+      "receiver": 1.0,
+      "amount": 1.0,
+      "mode": 1.0,
+      "complete": 1.0
+    },
+    "latency_ms": {
+      "mean": 0,
+      "p95": 0
+    },
+    "failures": []
+  },
+  "llm": "non mesuré : LLM_API_KEY absente"
+}
