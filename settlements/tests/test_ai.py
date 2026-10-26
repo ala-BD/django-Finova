@@ -89,18 +89,32 @@ class ReminderServiceTests(SettlementFixturesMixin, TestCase):
         self.assertEqual(result["source"], "llm")
         prompt = call_llm.call_args.args[1]
         self.assertIn("ton neutre", prompt)
-        self.assertIn("75.000", prompt)
+        self.assertIn("75 TND", prompt)  # jamais « 75.000 », lu « 75 000 » en français
 
     @patch("settlements.services.call_llm", side_effect=LLMError("timeout"))
     def test_template_fallback_on_api_error(self, _):
         result = services.generate_reminder(self.settlement_obj, "firm")
         self.assertEqual(result["source"], "template")
-        self.assertIn("75.000", result["message"])
+        self.assertIn("75 TND", result["message"])
         self.assertIn("Yahya", result["message"])
 
     @patch("settlements.services.call_llm", return_value="Rembourse vite.")
     def test_template_fallback_when_amount_missing(self, _):
         self.assertEqual(services.generate_reminder(self.settlement_obj, "friendly")["source"], "template")
+
+    @patch("settlements.services.call_llm", return_value="Il reste 75 000 TND à rembourser.")
+    def test_template_fallback_when_amount_is_wrong(self, _):
+        # Bug vu en conditions réelles : « 100.000 » (millimes) compris « 100 000 » par le LLM
+        self.assertEqual(services.generate_reminder(self.settlement_obj, "neutral")["source"], "template")
+
+    def test_human_amount_and_amount_extraction(self):
+        self.assertEqual(services.human_amount(D("100.000")), "100")
+        self.assertEqual(services.human_amount(D("17.500")), "17,5")
+        self.assertEqual(services.human_amount(D("0.250")), "0,25")
+        self.assertEqual(
+            services.amounts_in_text("Reste 1 200,5 TND sur 75,000 et 100 000 dinars, soit 12.5"),
+            [D("1200.5"), D("75.000"), D("100000"), D("12.5")],
+        )
 
     @patch("settlements.services.call_llm", return_value="75 " + "x" * 700)
     def test_template_fallback_when_too_long(self, _):
