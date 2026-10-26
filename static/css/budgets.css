@@ -719,3 +719,18 @@ input[type="color"].input {
 .report-actions .help {
     margin: 0;
 }
+
+.report-email-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.report-email-form label {
+    font-weight: 600;
+}
+
+.report-email-form .input {
+    width: min(100%, 18rem);
+}

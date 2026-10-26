@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
@@ -376,7 +378,7 @@ class BudgetReportPdfView(GroupMemberRequiredMixin, View):
 
 
 class BudgetReportEmailView(GroupMemberRequiredMixin, View):
-    """Envoie le rapport PDF par email à l'utilisateur connecté (POST + CSRF)."""
+    """Envoie le rapport PDF par email à l'adresse saisie (par défaut celle du profil). POST + CSRF."""
 
     http_method_names = ["post"]
 
@@ -387,14 +389,17 @@ class BudgetReportEmailView(GroupMemberRequiredMixin, View):
         back = request.POST.get("next") or reverse("budgets:list", kwargs={"gid": group.pk})
         if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
             back = reverse("budgets:list", kwargs={"gid": group.pk})
-        if not request.user.email:
-            messages.error(request, "Ajoutez une adresse email à votre profil pour recevoir le rapport.")
+        address = (request.POST.get("email") or request.user.email or "").strip()
+        try:
+            validate_email(address)
+        except ValidationError:
+            messages.error(request, "Saisissez une adresse email valide pour recevoir le rapport.")
             return redirect(back)
         try:
-            email_budget_report(group, month, request.user)
+            email_budget_report(group, month, request.user, to=address)
         except Exception:
             messages.error(request, "L'email n'a pas pu être envoyé. Téléchargez le PDF en attendant.")
         else:
-            messages.success(request, f"Rapport envoyé à {request.user.email}.")
+            messages.success(request, f"Rapport envoyé à {address}.")
         return redirect(back)
 

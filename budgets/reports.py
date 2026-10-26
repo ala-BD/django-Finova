@@ -154,8 +154,8 @@ def build_budget_report(group, month: date, user=None) -> bytes:
     return buffer.getvalue()
 
 
-def email_budget_report(group, month: date, user) -> None:
-    """Envoie le rapport PDF en pièce jointe à l'adresse de l'utilisateur (backend email de Django)."""
+def email_budget_report(group, month: date, user, to: str | None = None) -> None:
+    """Envoie le rapport PDF en pièce jointe (backend email de Django) à `to`, ou à l'adresse du profil."""
     month = services.first_of_month(month)
     pdf = build_budget_report(group, month, user=user)
     label = date_format(month, "F Y")
@@ -167,7 +167,7 @@ def email_budget_report(group, month: date, user) -> None:
             "— Finova"
         ),
         from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[user.email],
+        to=[to or user.email],
     )
     message.attach(report_filename(group, month), pdf, "application/pdf")
     message.send(fail_silently=False)

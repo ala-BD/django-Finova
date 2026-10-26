@@ -71,12 +71,20 @@ class ReportViewsTests(TestCase):
         self.assertEqual(mimetype, "application/pdf")
         self.assertTrue(content.startswith(b"%PDF"))
 
-    def test_user_without_email_gets_error(self):
+    def test_pdf_sent_to_typed_address(self):
+        self.client.force_login(self.member)
+        response = self.client.post(self.email_url, {"month": "2026-10", "email": "  linda.perso@gmail.com "}, follow=True)
+        self.assertContains(response, "Rapport envoyé à linda.perso@gmail.com")
+        self.assertEqual(mail.outbox[0].to, ["linda.perso@gmail.com"])
+
+    def test_invalid_or_missing_address_gets_error(self):
+        self.client.force_login(self.member)
+        response = self.client.post(self.email_url, {"email": "pas-un-email"}, follow=True)
+        self.assertContains(response, "Saisissez une adresse email valide")
         self.member.email = ""
         self.member.save()
-        self.client.force_login(self.member)
         response = self.client.post(self.email_url, follow=True)
-        self.assertContains(response, "Ajoutez une adresse email")
+        self.assertContains(response, "Saisissez une adresse email valide")
         self.assertEqual(len(mail.outbox), 0)
 
     def test_email_requires_post_and_csrf(self):
