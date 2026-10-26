@@ -13,4 +13,7 @@ DATABASES = {
     }
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Console par défaut ; un vrai envoi SMTP est possible en local via EMAIL_BACKEND dans .env.
+EMAIL_BACKEND = os.environ.get(  # noqa: F405
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
