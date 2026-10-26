@@ -9,7 +9,7 @@ class UserAdmin(DjangoUserAdmin):
     fieldsets = DjangoUserAdmin.fieldsets + (
         (
             "Profil Finova",
-            {"fields": ("avatar", "preferred_currency", "income_profile")},
+            {"fields": ("avatar", "preferred_currency", "income_profile", "monthly_income")},
         ),
     )
     list_display = (
