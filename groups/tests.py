@@ -426,7 +426,7 @@ class AIGroupViewTests(GroupFixturesMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "assistant")
 
-    @patch("groups.services.generate_group_from_prompt")
+    @patch("groups.views.generate_group_from_prompt")
     def test_post_valid_prompt_creates_group_and_returns_json(self, mock_gen):
         mock_gen.return_value = {
             "name": "Voyage Djerba",
@@ -465,7 +465,7 @@ class AIGroupViewTests(GroupFixturesMixin, TestCase):
         data = _json.loads(response.content)
         self.assertFalse(data["ok"])
 
-    @patch("groups.services.generate_group_from_prompt")
+    @patch("groups.views.generate_group_from_prompt")
     def test_post_llm_error_returns_503(self, mock_gen):
         from core.ai import LLMError
         mock_gen.side_effect = LLMError("LLM_API_KEY manquante.")
@@ -479,7 +479,7 @@ class AIGroupViewTests(GroupFixturesMixin, TestCase):
         self.assertFalse(data["ok"])
         self.assertFalse(data["retry"])
 
-    @patch("groups.services.generate_group_from_prompt")
+    @patch("groups.views.generate_group_from_prompt")
     def test_post_invalid_json_returns_422_with_retry(self, mock_gen):
         mock_gen.side_effect = ValueError("JSON invalide après 3 tentatives.")
         self.client.force_login(self.admin)
