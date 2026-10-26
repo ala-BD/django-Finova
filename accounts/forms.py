@@ -1,6 +1,9 @@
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.utils.translation import gettext_lazy as _
+
+User = get_user_model()
 
 
 class AccessibleFormMixin:
@@ -60,3 +63,50 @@ class LoginForm(AccessibleFormMixin, AuthenticationForm):
             attrs={"autocomplete": "current-password"}
         ),
     )
+
+
+class RegisterForm(AccessibleFormMixin, UserCreationForm):
+    first_name = forms.CharField(
+        label=_("Prénom"),
+        widget=forms.TextInput(attrs={"autocomplete": "given-name"}),
+    )
+    last_name = forms.CharField(
+        label=_("Nom"),
+        widget=forms.TextInput(attrs={"autocomplete": "family-name"}),
+    )
+    username = forms.CharField(
+        label=_("Identifiant"),
+        widget=forms.TextInput(attrs={"autocomplete": "username"}),
+    )
+    email = forms.EmailField(
+        label=_("Adresse e-mail"),
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+    )
+    password1 = forms.CharField(
+        label=_("Mot de passe"),
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+    )
+    password2 = forms.CharField(
+        label=_("Confirmer le mot de passe"),
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("first_name", "last_name", "username", "email")
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError(_("Cette adresse e-mail est déjà utilisée."))
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data["email"]
+        if commit:
+            user.save()
+        return user
+
