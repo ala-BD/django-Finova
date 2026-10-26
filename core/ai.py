@@ -42,7 +42,7 @@ def call_llm(feature: str, prompt: str, schema=None, module: str = "", user=None
     response_text = ""
 
     try:
-        api_key = getattr(settings, "LLM_API_KEY", "")
+        api_key = getattr(settings, "LLM_API_KEY", "").strip().strip('"').strip("'")
         if not api_key:
             raise LLMError(
                 "LLM_API_KEY manquante. Définissez la variable d'environnement LLM_API_KEY."
@@ -63,7 +63,10 @@ def call_llm(feature: str, prompt: str, schema=None, module: str = "", user=None
         req = urllib.request.Request(
             url,
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
             method="POST",
         )
 
