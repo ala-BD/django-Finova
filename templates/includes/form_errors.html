@@ -1,0 +1,22 @@
+{% comment %}
+Résumé accessible des erreurs d'un formulaire (Imem — gestion des erreurs de formulaire).
+Usage : {% include "includes/form_errors.html" with form=form %}
+Annoncé aux lecteurs d'écran ; chaque erreur de champ renvoie au champ concerné.
+{% endcomment %}
+{% if form.errors %}
+    <div class="form-errors" role="alert" aria-live="assertive" tabindex="-1" id="form-errors">
+        <p class="form-errors-title">
+            {% if form.errors|length == 1 %}Le formulaire contient une erreur{% else %}Le formulaire contient {{ form.errors|length }} erreurs{% endif %} :
+        </p>
+        <ul>
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li><a href="#{{ field.id_for_label }}">{{ field.label }}</a> : {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

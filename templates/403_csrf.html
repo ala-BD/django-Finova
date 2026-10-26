@@ -1,0 +1,8 @@
+{% extends "_error.html" %}
+{% block error_title %}Formulaire expiré{% endblock %}
+{% block error_code %}403{% endblock %}
+{% block error_heading %}Le formulaire a expiré{% endblock %}
+{% block error_body %}
+<p>Pour votre sécurité, le formulaire n'a pas été envoyé : son jeton de protection (CSRF) est absent ou périmé.</p>
+<p>Revenez à la page précédente, rechargez-la puis renvoyez le formulaire. Vérifiez aussi que les cookies sont autorisés.</p>
+{% endblock %}

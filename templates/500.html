@@ -1,6 +1,32 @@
-{% extends "base.html" %}
-{% block title %}Erreur serveur{% endblock %}
-{% block content %}
-<h1>500 — Erreur interne</h1>
-<p>Une erreur est survenue. Réessayez plus tard.</p>
-{% endblock %}
+{% load static %}<!DOCTYPE html>
+{% comment %}
+Page 500 autonome (Imem) : n'hérite pas de base.html et n'utilise ni l'utilisateur ni la
+base de données, pour rester affichable quand c'est justement la base qui est en panne.
+{% endcomment %}
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Erreur serveur · Finova</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header>
+        <p class="brand"><a href="/">Finova</a></p>
+    </header>
+    <main id="contenu">
+        <article class="error-page" aria-labelledby="error-title">
+            <p class="error-code" aria-hidden="true">500</p>
+            <h1 id="error-title">Une erreur est survenue</h1>
+            <p>Le serveur a rencontré un problème inattendu. L'équipe a été prévenue par les journaux d'erreurs.</p>
+            <p>Vos données n'ont pas été modifiées par la dernière action si elle a échoué. Réessayez dans quelques instants.</p>
+            <ul class="error-links">
+                <li><a class="btn btn-primary btn-inline" href="/">Retour à l'accueil</a></li>
+            </ul>
+        </article>
+    </main>
+    <footer>
+        <p>Finova — gestion et partage de dépenses</p>
+    </footer>
+</body>
+</html>
