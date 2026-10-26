@@ -1,4 +1,4 @@
-"""IA de risque de dépassement : variables, modèle entraîné, service, API JSON et résumé LLM."""
+"""IA de risque de dépassement : variables, modèle entraîné, service et API JSON."""
 
 from datetime import date
 from decimal import Decimal
@@ -10,7 +10,6 @@ from django.urls import reverse
 from budgets import ai_model, services
 from budgets.forecasting import OVERRUN_FEATURES, forecast_interval, overrun_features, pace_ratio
 from budgets.models import BudgetForecast
-from core.ai import LLMError
 
 from .factories import add_member, make_budget, make_category, make_expense, make_group, make_user
 
@@ -108,38 +107,6 @@ class RiskServiceTests(TestCase):
         self.assertEqual(usual, Decimal("120"))
 
 
-class MonthSummaryTests(TestCase):
-    def setUp(self):
-        self.group = make_group()
-        self.category = make_category(self.group, "Restaurants")
-        self.budget = make_budget(self.category, OCTOBER, limit="200")
-        for month in (7, 8, 9):
-            make_expense(self.category, "125", date(2026, month, 5))
-            make_expense(self.category, "125", date(2026, month, 25))
-        make_expense(self.category, "190", "2026-10-03")  # prévision 190 + 125 > 200
-
-    def test_llm_summary_used_when_it_names_risky_categories(self):
-        text = "Attention aux Restaurants : la prévision dépasse la limite, freinez les sorties."
-        with mock.patch("core.ai.call_llm", return_value=text) as call:
-            result = services.month_summary(self.group, today=TODAY)
-        self.assertEqual(result["source"], "llm")
-        prompt = call.call_args.args[1]
-        self.assertIn("Restaurants", prompt)
-        self.assertNotIn("username", prompt)  # uniquement des agrégats
-
-    def test_fallback_when_llm_unavailable_or_off_topic(self):
-        with mock.patch("core.ai.call_llm", side_effect=LLMError("pas de clé")):
-            result = services.month_summary(self.group, today=TODAY)
-        self.assertEqual(result["source"], "fallback")
-        self.assertIn("Restaurants", result["summary"])
-        with mock.patch("core.ai.call_llm", return_value="Tout va bien, continuez !"):
-            self.assertEqual(services.month_summary(self.group, today=TODAY)["source"], "fallback")
-
-    def test_no_budget(self):
-        result = services.month_summary(make_group(), today=TODAY)
-        self.assertIn("Aucun budget", result["summary"])
-
-
 @mock.patch("budgets.services.timezone.localdate", return_value=TODAY)
 class InsightViewsTests(TestCase):
     def setUp(self):
@@ -176,16 +143,9 @@ class InsightViewsTests(TestCase):
         data = self.client.get(self.url("insight_api", pk=past.pk)).json()
         self.assertFalse(data["available"])
 
-    def test_summary_api(self, _):
-        self.client.force_login(self.member)
-        with mock.patch("core.ai.call_llm", side_effect=LLMError("pas de clé")):
-            data = self.client.get(self.url("insights_summary")).json()
-        self.assertTrue(data["ok"])
-        self.assertEqual(data["source"], "fallback")
-
     def test_outsider_and_foreign_budget_are_refused(self, _):
         self.client.force_login(make_user())
-        for url in (self.url("insights"), self.url("insights_summary"), self.url("insight_api", pk=self.budget.pk)):
+        for url in (self.url("insights"), self.url("insight_api", pk=self.budget.pk)):
             self.assertEqual(self.client.get(url).status_code, 403, url)
         foreign = make_budget(make_category(make_group(admin=self.admin)), OCTOBER)
         self.client.force_login(self.admin)

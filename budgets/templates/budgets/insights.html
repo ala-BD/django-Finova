@@ -10,14 +10,7 @@
 </div>
 <p class="lead">Pour chaque budget du mois en cours : la prévision de fin de mois, sa fourchette et la probabilité de dépasser la limite, calculée par un modèle d'apprentissage automatique.</p>
 
-<section class="result-card ai-summary" aria-labelledby="summary-title">
-    <h2 id="summary-title">Résumé de l'assistant</h2>
-    <div id="ai-summary" class="ai-output" aria-live="polite" aria-busy="false"
-         data-url="{% url 'budgets:insights_summary' group.pk %}">
-        <p class="muted">Le résumé est rédigé par le modèle de langage à partir des seuls totaux du mois.</p>
-    </div>
-    <button type="button" class="btn btn-ghost" id="ai-summary-button" hidden>Générer le résumé</button>
-</section>
+{% include "budgets/_report_actions.html" with month=month %}
 
 {% if rows %}
     <ul class="budget-list insight-list" role="list">

@@ -556,7 +556,7 @@ def recommend_budget(group, category, month: date, user=None) -> dict:
     }
 
 
-# --- IA : analyse du mois et résumé par le LLM ------------------------------------------
+# --- IA : analyse de tous les budgets du mois ------------------------------------------
 
 
 def group_analyses(group, user=None, today: date | None = None) -> list[dict]:
@@ -567,65 +567,6 @@ def group_analyses(group, user=None, today: date | None = None) -> list[dict]:
         analysis = forecast_budget(status["budget"], today=today, user=user)
         analyses.append({"status": status, "analysis": analysis})
     return sorted(analyses, key=lambda row: -(row["analysis"]["overrun_probability"] or 0))
-
-
-def fallback_summary(rows: list[dict], currency: str) -> str:
-    if not rows:
-        return "Aucun budget n'est défini ce mois-ci : rien à analyser."
-    risky = [row for row in rows if row["analysis"]["risk_level"] in ("high", "medium")]
-    if not risky:
-        subject = "Le budget du mois est" if len(rows) == 1 else f"Les {len(rows)} budgets du mois sont"
-        return f"{subject} sous contrôle : aucun risque de dépassement notable."
-    parts = [
-        f"{row['status']['category'].name} ({row['analysis']['risk_percent']} %, prévision "
-        f"{row['analysis']['predicted_total']:.0f} {currency} pour {row['analysis']['limit']:.0f})"
-        for row in risky[:3]
-    ]
-    return (
-        f"{len(risky)} budget(s) sur {len(rows)} risquent de dépasser : "
-        + " ; ".join(parts)
-        + ". Réduire ces dépenses d'ici la fin du mois permettrait de rester dans les limites."
-    )
-
-
-def month_summary(group, user=None, today: date | None = None) -> dict:
-    """
-    Résumé du mois en 2 à 3 phrases, rédigé par le LLM à partir des seuls agrégats
-    (catégorie, limite, prévision, risque) : aucune dépense individuelle n'est envoyée.
-    Repli sur un texte généré par règles si l'API échoue ou si la réponse ne cite
-    aucune des catégories à risque.
-    """
-    from core.ai import call_llm
-
-    rows = group_analyses(group, user=user, today=today)
-    fallback = fallback_summary(rows, group.currency)
-    if not rows:
-        return {"summary": fallback, "source": "fallback", "rows": rows}
-
-    lines = "\n".join(
-        f"- {row['status']['category'].name} : limite {row['analysis']['limit']:.0f}, "
-        f"déjà dépensé {row['analysis']['spent_so_far']:.0f}, prévision {row['analysis']['predicted_total']:.0f}, "
-        f"risque de dépassement {row['analysis']['risk_percent']} %"
-        for row in rows
-    )
-    prompt = (
-        "Tu es l'assistant budgétaire de Finova, une application de dépenses partagées. "
-        "En 2 ou 3 phrases en français, résume la situation des budgets de ce mois pour le groupe "
-        "et donne un conseil concret. Utilise uniquement les chiffres ci-dessous, n'en invente aucun. "
-        f"Devise : {group.currency}.\n{lines}"
-    )
-    risky_names = [
-        row["status"]["category"].name for row in rows if row["analysis"]["risk_level"] in ("high", "medium")
-    ]
-    try:
-        answer = call_llm("month_summary", prompt, module="budgets", user=user)
-        text = " ".join((answer.get("text", "") if isinstance(answer, dict) else str(answer or "")).split())
-        mentions_risk = not risky_names or any(name.lower() in text.lower() for name in risky_names)
-        if text and len(text) <= 700 and mentions_risk:
-            return {"summary": text, "source": "llm", "rows": rows}
-    except Exception as exc:  # l'IA n'est jamais bloquante
-        logger.info("Résumé du mois : repli sur le texte par règles (%s).", exc)
-    return {"summary": fallback, "source": "fallback", "rows": rows}
 
 
 def analysis_payload(budget: Budget, analysis: dict | None) -> dict:

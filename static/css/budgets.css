@@ -702,3 +702,20 @@ input[type="color"].input {
         text-align: center;
     }
 }
+
+/* Rapport PDF et email */
+.report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin: 0 0 1.5rem;
+}
+
+.report-actions form {
+    margin: 0;
+}
+
+.report-actions .help {
+    margin: 0;
+}

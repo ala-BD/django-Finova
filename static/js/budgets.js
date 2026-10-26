@@ -180,47 +180,6 @@
         });
     }
 
-    /* --- Analyse IA : résumé du mois (LLM) --- */
-    function initSummary() {
-        const output = document.getElementById("ai-summary");
-        const button = document.getElementById("ai-summary-button");
-        if (!output || !button) {
-            return;
-        }
-        button.hidden = false;
-
-        async function load() {
-            button.disabled = true;
-            output.setAttribute("aria-busy", "true");
-            output.textContent = "Analyse en cours…";
-            try {
-                const { response, data } = await getJson(output.dataset.url);
-                output.replaceChildren();
-                if (!response.ok || !data.ok) {
-                    output.textContent = "Résumé indisponible pour le moment.";
-                    return;
-                }
-                output.append(element("p", "", data.summary));
-                output.append(
-                    element(
-                        "span",
-                        "ai-source",
-                        data.source === "llm" ? "Rédigé par le modèle de langage." : "Résumé standard (modèle de langage indisponible)."
-                    )
-                );
-                button.textContent = "Régénérer le résumé";
-            } catch (error) {
-                output.textContent = "Erreur réseau : réessayez.";
-            } finally {
-                output.setAttribute("aria-busy", "false");
-                button.disabled = false;
-            }
-        }
-
-        button.addEventListener("click", load);
-        load();
-    }
-
     /* --- Analyse IA : recalcul d'une carte via l'API JSON --- */
     function initInsightRefresh() {
         document.querySelectorAll(".insight-card[data-api]").forEach(function (card) {
@@ -270,7 +229,6 @@
     document.addEventListener("DOMContentLoaded", function () {
         initRecommendation();
         initSimulator();
-        initSummary();
         initInsightRefresh();
     });
 })();

@@ -22,6 +22,8 @@
     <a href="?month={{ next_month|date:'Y-m' }}" rel="next">{{ next_month|date:"F Y" }} <span aria-hidden="true">→</span></a>
 </nav>
 
+{% include "budgets/_report_actions.html" %}
+
 {% if statuses %}
     <section aria-labelledby="summary-title">
         <h2 id="summary-title" class="visually-hidden">Résumé du mois</h2>

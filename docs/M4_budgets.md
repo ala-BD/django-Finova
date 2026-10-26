@@ -171,7 +171,8 @@ catégories, ce qui rend la variable « rythme du groupe » très utile. Hypoth�
 | Méthode | URL | Réponse |
 |---|---|---|
 | GET | `/groups/<gid>/budgets/<id>/insight/` | prévision, fourchette, naïve, probabilité, niveau, facteurs, version du modèle, latence |
-| GET | `/groups/<gid>/budgets/insights/summary/` | résumé du mois rédigé par le LLM (`source` : `llm` ou `fallback`) |
+| GET | `/groups/<gid>/budgets/report.pdf?month=AAAA-MM` | rapport PDF des budgets du mois |
+| POST | `/groups/<gid>/budgets/report/email/` | envoie ce PDF par email à l'utilisateur connecté |
 | GET | `/groups/<gid>/budgets/recommend/?category=<id>` | limite conseillée et explication |
 
 Réservées aux membres du groupe (403 sinon, 404 pour un budget d'un autre groupe). Exemple :
@@ -189,12 +190,19 @@ Réservées aux membres du groupe (403 sinon, 404 pour un budget d'un autre grou
 }
 ```
 
-### Résumé du mois par le LLM
+### Rapport PDF et envoi par email
 
-En haut de l'onglet « Analyse IA », un résumé de 2 à 3 phrases est demandé au LLM (`core.ai.call_llm`)
-en asynchrone (`fetch`, indicateur « Analyse en cours… »). Le LLM ne reçoit **que des agrégats**
-(catégorie, limite, prévision, risque), jamais une dépense ou un nom de membre. La réponse est refusée
-si elle ne cite aucune catégorie à risque ; un résumé construit par règles prend alors le relais.
+Sur l'onglet **Budgets** (n'importe quel mois) et sur **Analyse IA** :
+
+- **Télécharger le PDF** (`GET /groups/<gid>/budgets/report.pdf?month=2026-10`) : rapport généré avec
+  **reportlab** — totaux, consommation par catégorie avec statut, et pour le mois en cours l'analyse IA
+  (prévision, fourchette, risque).
+- **Recevoir par email** (`POST /groups/<gid>/budgets/report/email/`, protégé par CSRF) : le même PDF en
+  pièce jointe, envoyé à l'adresse de l'utilisateur connecté via le système d'email de Django. En
+  développement, l'email s'affiche dans le terminal du serveur (backend console) ; en production, il part
+  en SMTP grâce aux variables `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` (jamais dans le code).
+
+Réservé aux membres du groupe (403 sinon).
 
 ### Recommandation de budget
 
@@ -242,7 +250,8 @@ animation désactivée si `prefers-reduced-motion`, mise en page fluide jusqu'au
    ajouter dans l'admin (`/admin/expenses/expense/add/`) une dépense qui fait passer un budget
    au-dessus de 100 % → rafraîchir la page des budgets.
 5. **Simulateur** : Restaurants, 20 %, 360 TND → résultat sans rechargement.
-6. **Analyse IA** : résumé de l'assistant, cartes triées par risque, « Pourquoi ce risque ? »,
+6. **Télécharger le PDF**, puis **Recevoir par email** (l'email apparaît dans le terminal du serveur).
+   **Analyse IA** : cartes triées par risque, « Pourquoi ce risque ? »,
    bouton « Recalculer via l'API », lien « Voir le JSON », puis la fiche du modèle (F1, AUC).
 7. Se reconnecter en `yahya` : boutons de gestion absents, `/budgets/new/` → 403.
 

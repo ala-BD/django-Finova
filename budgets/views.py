@@ -4,9 +4,10 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Count
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import CreateView, DeleteView, FormView, ListView, TemplateView, UpdateView
 
@@ -358,9 +359,42 @@ class BudgetInsightApiView(GroupMemberRequiredMixin, View):
         return JsonResponse({"ok": True, **services.analysis_payload(budget, analysis)})
 
 
-class MonthSummaryApiView(GroupMemberRequiredMixin, View):
-    """API JSON : résumé du mois rédigé par le LLM (appelé en fetch, peut prendre quelques secondes)."""
+def report_month(request):
+    return services.parse_month(request.GET.get("month") or request.POST.get("month")) or services.current_month()
+
+
+class BudgetReportPdfView(GroupMemberRequiredMixin, View):
+    """Télécharge le rapport des budgets du mois en PDF."""
 
     def get(self, request, *args, **kwargs):
-        result = services.month_summary(self.get_group(), user=request.user)
-        return JsonResponse({"ok": True, "summary": result["summary"], "source": result["source"]})
+        from .reports import build_budget_report, report_filename
+
+        group, month = self.get_group(), report_month(request)
+        response = HttpResponse(build_budget_report(group, month, user=request.user), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{report_filename(group, month)}"'
+        return response
+
+
+class BudgetReportEmailView(GroupMemberRequiredMixin, View):
+    """Envoie le rapport PDF par email à l'utilisateur connecté (POST + CSRF)."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        from .reports import email_budget_report
+
+        group, month = self.get_group(), report_month(request)
+        back = request.POST.get("next") or reverse("budgets:list", kwargs={"gid": group.pk})
+        if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
+            back = reverse("budgets:list", kwargs={"gid": group.pk})
+        if not request.user.email:
+            messages.error(request, "Ajoutez une adresse email à votre profil pour recevoir le rapport.")
+            return redirect(back)
+        try:
+            email_budget_report(group, month, request.user)
+        except Exception:
+            messages.error(request, "L'email n'a pas pu être envoyé. Téléchargez le PDF en attendant.")
+        else:
+            messages.success(request, f"Rapport envoyé à {request.user.email}.")
+        return redirect(back)
+
