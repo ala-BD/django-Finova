@@ -125,6 +125,39 @@ class RecurringExpenseGenerationTests(IntegrationFixtures, TestCase):
         self.assertTrue(Notification.objects.filter(user=self.ala, kind="recurring_expense_generated").exists())
 
 
+class AssistantRoutingWithRealLLMOutputTests(IntegrationFixtures, TestCase):
+    """M6 : Gemini répond ```json {...} ``` ; l'assistant doit l'accepter (bug vu en conditions réelles)."""
+
+    def test_fenced_json_is_parsed(self):
+        from automation.services import _parse_function_call
+
+        raw = '```json\n{\n  "function": "get_balance",\n  "arguments": {}\n}\n```'
+        self.assertEqual(_parse_function_call(raw), ("get_balance", {}))
+
+    def test_unusable_routing_falls_back_to_keywords(self):
+        from unittest.mock import patch
+
+        from automation.services import _route_question
+
+        for raw in ("je ne sais pas", '{"function": "execute_sql", "arguments": {}}'):
+            with self.subTest(raw=raw), patch("automation.services.call_llm", return_value=raw):
+                self.assertEqual(_route_question(self.ala, "combien je dois ?")[0], "get_balance")
+
+
+class AssistantBalanceTests(IntegrationFixtures, TestCase):
+    """M6 + M3 : « combien je dois ? » doit porter sur l'utilisateur qui pose la question."""
+
+    def test_get_balance_returns_only_the_asking_user(self):
+        from automation.services import _execute_assistant_function
+
+        create_expense(group=self.group, created_by=self.ala, title="Courses", amount=D("90"))
+        data = _execute_assistant_function(self.linda, "get_balance", {})
+        self.assertEqual(data, [{
+            "groupe": "Colocation", "devise": "TND", "solde": "-30.000", "situation": "débiteur",
+            "je_dois": [{"à": "Ala", "montant": "30.000"}], "on_me_doit": [],
+        }])
+
+
 class ExpenseUrlsTests(IntegrationFixtures, TestCase):
     def test_expenses_mounted_under_group_and_linked(self):
         self.assertEqual(reverse("expenses:list", kwargs={"gid": self.group.pk}), f"/groups/{self.group.pk}/expenses/")

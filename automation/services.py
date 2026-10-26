@@ -1,6 +1,7 @@
 import calendar
 import json
 import logging
+import re
 from datetime import timedelta
 
 from django.apps import apps
@@ -254,8 +255,10 @@ def _parse_function_call(raw_result):
     if isinstance(raw_result, dict):
         result = raw_result
     elif isinstance(raw_result, str):
+        # Les LLM entourent souvent le JSON de ```json … ``` : on extrait l'objet lui-même
+        match = re.search(r"\{.*\}", raw_result, re.DOTALL)
         try:
-            result = json.loads(raw_result)
+            result = json.loads(match.group(0) if match else raw_result)
         except json.JSONDecodeError as exc:
             raise AssistantRequestError("Réponse de routage IA invalide.") from exc
     else:
@@ -340,7 +343,8 @@ def _route_question(user, question):
             user=user,
         )
         return _parse_function_call(raw)
-    except LLMError:
+    except (LLMError, AssistantRequestError):
+        # API indisponible OU réponse inexploitable : repli sur le routage par mots-clés
         return _heuristic_function(question)
 
 
@@ -358,7 +362,7 @@ def _serialize_expense(expense):
 def _execute_assistant_function(user, function_name, arguments):
     from budgets.services import get_budget_status
     from expenses.services import get_group_expenses
-    from settlements.services import compute_balances
+    from settlements.services import member_balance_summary
 
     groups = _authorized_groups(user)
     if function_name == "next_reminders":
@@ -384,7 +388,9 @@ def _execute_assistant_function(user, function_name, arguments):
         return results[:200]
 
     if function_name == "get_balance":
-        return [compute_balances(group) for group in groups]
+        # Solde de l'utilisateur connecté uniquement, avec des prénoms (contrat M3) : le LLM ne
+        # reçoit plus les soldes de tous les membres indexés par identifiant interne.
+        return [member_balance_summary(group, user) for group in groups]
 
     if function_name == "get_budget_status":
         month = timezone.localdate().replace(day=1)
