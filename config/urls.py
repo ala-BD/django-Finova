@@ -14,7 +14,7 @@ urlpatterns = [
     path("settlements/", include("settlements.urls")),
     path("budgets/", include("budgets.urls")),
     path("analytics/", include("analytics.urls")),
-    path("automation/", include("automation.urls")),
+    path("", include("automation.urls")),
 ]
 
 handler403 = "core.views.error_403"

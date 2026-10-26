@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Dépenses récurrentes{% endblock %}
+{% block content %}
+<h1>Dépenses récurrentes</h1>
+<p><a href="{% url 'automation:recurring_create' gid=group.pk %}">Ajouter une dépense récurrente</a></p>
+{% if recurring %}
+<ul>
+  {% for item in recurring %}
+    <li>
+      <a href="{% url 'automation:recurring_detail' gid=group.pk pk=item.pk %}">{{ item.title }}</a>
+      — {{ item.amount }} — {{ item.get_frequency_display }}
+      <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
+    </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Aucune dépense récurrente pour ce groupe.</p>
+{% endif %}
+{% endblock %}

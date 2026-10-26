@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Supprimer la dépense{% endblock %}
+{% block content %}
+<h1>Supprimer {{ expense.title }} ?</h1>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit">Confirmer la suppression</button>
+  <a href="{% url 'automation:recurring_detail' gid=group.pk pk=expense.pk %}">Annuler</a>
+</form>
+{% endblock %}
