@@ -1464,3 +1464,44 @@ textarea.input {
     .asst-dots span { animation: none; }
     .asst-log { scroll-behavior: auto; }
 }
+
+/* ── M1 · Création de groupe par IA : formulaire pré-rempli ── */
+.ai-section-label {
+    margin: 0.25rem 0 0.4rem;
+    font-weight: 600;
+}
+
+.ai-tag-removable {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding-right: 0.3rem;
+}
+
+.ai-tag-removable button {
+    border: 0;
+    background: none;
+    color: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.ai-tag-removable button:hover {
+    background: rgb(15 95 89 / 15%);
+}
+
+.ai-filled {
+    animation: ai-filled 1.6s ease-out;
+}
+
+@keyframes ai-filled {
+    0% { background: #ccfbf1; box-shadow: 0 0 0 3px rgb(15 95 89 / 25%); }
+    100% { background: var(--surface); box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-filled { animation: none; }
+}

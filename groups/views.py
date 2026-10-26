@@ -13,6 +13,7 @@ from core.permissions import GroupAdminRequiredMixin, GroupMemberRequiredMixin
 
 from decimal import Decimal
 
+from .emails import send_invitation_email
 from .forms import GroupForm, InvitationForm, MembershipForm, SplitPreviewForm
 from .models import Group, Invitation, Membership
 from .services import (
@@ -57,6 +58,10 @@ class GroupCreateView(LoginRequiredMixin, CreateView):
                 role=Membership.Role.ADMIN,
                 weight=default_weight_for(self.request.user),
             )
+            # Catégories / budgets proposés par l'IA et conservés par l'utilisateur (champ caché)
+            suggestions = _parse_ai_suggestions(self.request.POST.get("ai_suggestions", ""))
+            if suggestions["categories"]:
+                _create_budgets_if_available(group, suggestions, self.request.user)
         messages.success(self.request, "Groupe créé. Vous en êtes l'admin.")
         return redirect("groups:detail", gid=group.pk)
 
@@ -210,10 +215,17 @@ class InvitationCreateView(GroupAdminRequiredMixin, CreateView):
         accept_url = self.request.build_absolute_uri(
             reverse("invitations:accept", kwargs={"token": invitation.token})
         )
-        messages.success(
-            self.request,
-            f"Invitation envoyée à {invitation.email}. Lien (7 jours) : {accept_url}",
-        )
+        if send_invitation_email(invitation, accept_url, self.request.user):
+            messages.success(
+                self.request,
+                f"Invitation envoyée par e-mail à {invitation.email} (valable 7 jours).",
+            )
+        else:
+            messages.warning(
+                self.request,
+                f"L'invitation est créée mais l'e-mail n'a pas pu être envoyé à {invitation.email}. "
+                f"Transmettez-lui ce lien (valable 7 jours) : {accept_url}",
+            )
         return redirect("groups:detail", gid=invitation.group_id)
 
     def get_context_data(self, **kwargs):
@@ -330,29 +342,17 @@ class GroupAICreateView(LoginRequiredMixin, View):
                 status=422,
             )
 
-        # Création du groupe + membership admin dans une transaction atomique
-        with transaction.atomic():
-            group = Group.objects.create(
-                name=group_data["name"],
-                description=group_data["description"],
-                currency=group_data["currency"],
-                default_split_rule=group_data["default_split_rule"],
-                created_by=request.user,
-            )
-            Membership.objects.create(
-                group=group,
-                user=request.user,
-                role=Membership.Role.ADMIN,
-                weight=default_weight_for(request.user),
-            )
-            # Contrat M4 : création des catégories et budgets si disponibles
-            _create_budgets_if_available(group, group_data, request.user)
-
+        # Rien n'est créé ici : la suggestion pré-remplit le formulaire, l'utilisateur la vérifie
+        # puis la soumet à GroupCreateView (catégories et budgets transmis en champ caché).
         return JsonResponse(
             {
                 "ok": True,
-                "redirect": reverse("groups:detail", kwargs={"gid": group.pk}),
-                "group_name": group.name,
+                "fields": {
+                    "name": group_data["name"],
+                    "description": group_data["description"],
+                    "currency": group_data["currency"],
+                    "default_split_rule": group_data["default_split_rule"],
+                },
                 "categories": group_data["categories"],
                 "budgets": group_data["budgets"],
             }
@@ -367,20 +367,57 @@ def _create_budgets_if_available(group, group_data: dict, user) -> None:
     from django.apps import apps
     try:
         Category = apps.get_model("budgets", "Category")
-        Budget = apps.get_model("budgets", "Budget")
     except LookupError:
         return  # Module M4 pas encore prêt
+    try:
+        Budget = apps.get_model("budgets", "Budget")
+    except LookupError:
+        Budget = None  # les catégories sont créées même si les budgets ne sont pas encore livrés
 
     budget_map = {b["category"]: b["amount"] for b in group_data.get("budgets", [])}
     for cat_name in group_data.get("categories", []):
         try:
-            cat, _ = Category.objects.get_or_create(name=cat_name, group=group)
-            amount = budget_map.get(cat_name)
-            if amount:
-                Budget.objects.get_or_create(
-                    group=group,
-                    category=cat,
-                    defaults={"amount": amount},
-                )
+            # Point de sauvegarde : une erreur ici ne doit pas invalider la transaction du groupe
+            with transaction.atomic():
+                cat = Category.objects.filter(group=group, name__iexact=cat_name).first()
+                if cat is None:
+                    cat = Category.objects.create(group=group, name=cat_name)
+                amount = budget_map.get(cat_name)
+                if Budget is not None and amount:
+                    Budget.objects.get_or_create(
+                        group=group,
+                        category=cat,
+                        defaults={"amount": amount},
+                    )
         except Exception:
             pass  # Ne jamais bloquer la création du groupe à cause de M4
+
+
+def _parse_ai_suggestions(raw: str) -> dict:
+    """Catégories / budgets renvoyés par le formulaire (champ caché) : on ne fait pas confiance au
+    navigateur, tout est revalidé (types, longueurs, montants positifs, 10 catégories au plus)."""
+    import json
+
+    empty = {"categories": [], "budgets": []}
+    try:
+        data = json.loads(raw) if raw else {}
+    except (TypeError, ValueError):
+        return empty
+    if not isinstance(data, dict):
+        return empty
+    categories = []
+    for name in data.get("categories", []) if isinstance(data.get("categories"), list) else []:
+        name = str(name).strip()[:60]
+        if name and name.casefold() not in {c.casefold() for c in categories}:
+            categories.append(name)
+    categories = categories[:10]
+    budgets = []
+    for item in data.get("budgets", []) if isinstance(data.get("budgets"), list) else []:
+        if isinstance(item, dict) and str(item.get("category", "")).strip() in categories:
+            try:
+                amount = float(item.get("amount"))
+            except (TypeError, ValueError):
+                continue
+            if 0 < amount <= 10_000_000:
+                budgets.append({"category": str(item["category"]).strip(), "amount": amount})
+    return {"categories": categories, "budgets": budgets}

@@ -427,7 +427,7 @@ class AIGroupViewTests(GroupFixturesMixin, TestCase):
         self.assertContains(response, "assistant")
 
     @patch("groups.views.generate_group_from_prompt")
-    def test_post_valid_prompt_creates_group_and_returns_json(self, mock_gen):
+    def test_post_valid_prompt_returns_fields_without_creating_group(self, mock_gen):
         mock_gen.return_value = {
             "name": "Voyage Djerba",
             "description": "Vacances en été",
@@ -444,16 +444,42 @@ class AIGroupViewTests(GroupFixturesMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         data = _json.loads(response.content)
         self.assertTrue(data["ok"])
-        self.assertIn("/groups/", data["redirect"])
-        self.assertEqual(data["group_name"], "Voyage Djerba")
-        self.assertTrue(Group.objects.filter(name="Voyage Djerba").exists())
-        # Le créateur est bien admin
+        self.assertEqual(data["fields"], {
+            "name": "Voyage Djerba", "description": "Vacances en été",
+            "currency": "TND", "default_split_rule": "equal",
+        })
+        self.assertEqual(data["categories"], ["Transport", "Hébergement"])
+        # L'IA remplit seulement le formulaire : aucun groupe n'est créé
+        self.assertFalse(Group.objects.filter(name="Voyage Djerba").exists())
+
+    def test_submitting_prefilled_form_creates_group_with_kept_categories(self):
+        from budgets.models import Category
+
+        self.client.force_login(self.admin)
+        suggestions = {
+            "categories": ["Transport", "Hébergement", "transport", "<b>x</b>" * 30],
+            "budgets": [{"category": "Transport", "amount": 500}, {"category": "Inconnue", "amount": 9}],
+        }
+        response = self.client.post(reverse("groups:create"), {
+            "name": "Voyage Djerba", "description": "Vacances", "currency": "TND",
+            "default_split_rule": "equal", "ai_suggestions": _json.dumps(suggestions),
+        })
         group = Group.objects.get(name="Voyage Djerba")
-        self.assertTrue(
-            Membership.objects.filter(
-                group=group, user=self.admin, role=Membership.Role.ADMIN
-            ).exists()
-        )
+        self.assertRedirects(response, reverse("groups:detail", kwargs={"gid": group.pk}))
+        self.assertTrue(Membership.objects.filter(group=group, user=self.admin, role=Membership.Role.ADMIN).exists())
+        names = list(Category.objects.filter(group=group).order_by("pk").values_list("name", flat=True))
+        self.assertEqual(names[:2], ["Transport", "Hébergement"])  # doublon « transport » ignoré
+        self.assertTrue(all(len(n) <= 60 for n in names))  # nom trop long tronqué
+
+    def test_tampered_suggestions_never_break_group_creation(self):
+        self.client.force_login(self.admin)
+        for payload in ("pas du json", '["liste"]', '{"categories": "texte"}', '{"categories": [1, null]}'):
+            with self.subTest(payload=payload):
+                name = f"Groupe {abs(hash(payload)) % 1000}"
+                self.client.post(reverse("groups:create"), {
+                    "name": name, "currency": "TND", "default_split_rule": "equal", "ai_suggestions": payload,
+                })
+                self.assertTrue(Group.objects.filter(name=name).exists())
 
     def test_post_empty_prompt_returns_400(self):
         self.client.force_login(self.admin)
@@ -491,3 +517,36 @@ class AIGroupViewTests(GroupFixturesMixin, TestCase):
         data = _json.loads(response.content)
         self.assertFalse(data["ok"])
         self.assertTrue(data["retry"])
+
+
+class InvitationEmailTests(GroupFixturesMixin, TestCase):
+    """L'invitation est envoyée par e-mail (backend mémoire en test : aucun envoi réel)."""
+
+    def invite(self, email="linda@example.com"):
+        self.client.force_login(self.admin)
+        return self.client.post(
+            reverse("groups:invite", kwargs={"gid": self.group.pk}), {"email": email}, follow=True
+        )
+
+    def test_email_sent_with_accept_link(self):
+        from django.core import mail
+
+        response = self.invite()
+        invitation = Invitation.objects.get(email="linda@example.com")
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ["linda@example.com"])
+        self.assertIn("Colocation", email.subject)
+        accept_path = reverse("invitations:accept", kwargs={"token": invitation.token})
+        self.assertIn(accept_path, email.body)
+        html, mimetype = email.alternatives[0]
+        self.assertEqual(mimetype, "text/html")
+        self.assertIn(accept_path, html)
+        self.assertContains(response, "Invitation envoyée par e-mail à linda@example.com")
+
+    def test_smtp_failure_keeps_invitation_and_shows_link(self):
+        with patch("django.core.mail.EmailMultiAlternatives.send", side_effect=OSError("SMTP refusé")):
+            response = self.invite()
+        invitation = Invitation.objects.get(email="linda@example.com")
+        self.assertContains(response, "n&#x27;a pas pu être envoyé")
+        self.assertContains(response, str(invitation.token))

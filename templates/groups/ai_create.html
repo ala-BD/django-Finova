@@ -8,11 +8,11 @@
     <span class="ai-badge">✦ IA</span>
     <h1>Créer un groupe avec l'assistant</h1>
     <p class="ai-subtitle">
-      Décrivez votre projet en une phrase, l'IA génère le groupe, les catégories et les budgets.
+      Décrivez votre projet en une phrase : l'IA remplit le formulaire ci-dessous, vous vérifiez puis vous créez le groupe.
     </p>
   </div>
 
-  {# ── Formulaire IA ── #}
+  {# ── Formulaire IA : ne crée rien, il remplit seulement le formulaire du groupe ── #}
   <form id="ai-form" autocomplete="off">
     {% csrf_token %}
     <div class="ai-input-row">
@@ -28,54 +28,58 @@
         autofocus
       />
       <button id="ai-submit" type="submit" class="btn btn-primary btn-ai">
-        <span id="ai-btn-text">Générer ✦</span>
+        <span id="ai-btn-text">Remplir avec l'IA ✦</span>
         <span id="ai-spinner" class="spinner" hidden aria-hidden="true"></span>
       </button>
     </div>
   </form>
 
-  {# ── Zone de résultat IA ── #}
+  <p id="ai-status" class="visually-hidden" role="status" aria-live="polite"></p>
+
+  {# ── Résultat : rappel de ce qui a été rempli + catégories proposées (modifiables) ── #}
   <div id="ai-result" hidden>
     <div class="ai-result-card">
       <div class="ai-result-header">
-        <span class="ai-ok-badge">✓ Groupe généré</span>
-        <strong id="ai-group-name"></strong>
+        <span class="ai-ok-badge">✓ Formulaire pré-rempli</span>
+        <span>Vérifiez les champs, modifiez-les si besoin, puis cliquez sur « Créer le groupe ».</span>
       </div>
-      <ul id="ai-categories" class="ai-tag-list"></ul>
+      <div id="ai-categories-block" hidden>
+        <p class="ai-section-label">Catégories proposées <span class="muted">(cliquez sur × pour en retirer)</span></p>
+        <ul id="ai-categories" class="ai-tag-list" aria-label="Catégories proposées"></ul>
+      </div>
       <table id="ai-budgets-table" class="data-table ai-budget-table" hidden>
+        <caption>Budgets suggérés (indicatifs)</caption>
         <thead>
           <tr>
-            <th>Catégorie</th>
-            <th>Budget suggéré</th>
+            <th scope="col">Catégorie</th>
+            <th scope="col">Budget suggéré</th>
           </tr>
         </thead>
         <tbody id="ai-budgets-body"></tbody>
       </table>
-      <p id="ai-redirect-msg" class="ai-redirect-msg">
-        Redirection vers le groupe…
-      </p>
     </div>
   </div>
 
   {# ── Zone d'erreur IA ── #}
   <div id="ai-error" class="form-errors" role="alert" aria-live="assertive" hidden>
     <p id="ai-error-msg"></p>
-    <button id="ai-retry-btn" class="btn btn-inline" hidden>Réessayer</button>
+    <button id="ai-retry-btn" type="button" class="btn btn-inline" hidden>Réessayer</button>
   </div>
 
   {# ── Séparateur ── #}
   <div class="ai-separator">
-    <span>ou créer manuellement</span>
+    <span>informations du groupe</span>
   </div>
 
-  {# ── Formulaire manuel (toujours disponible) ── #}
-  <form method="post" action="{% url 'groups:create' %}" novalidate>
+  {# ── Formulaire du groupe : rempli par l'IA ou à la main, c'est lui qui crée le groupe ── #}
+  <form id="group-form" method="post" action="{% url 'groups:create' %}" novalidate>
     {% csrf_token %}
     {% include "includes/form_field.html" with field=form.name %}
     {% include "includes/form_field.html" with field=form.description %}
     {% include "includes/form_field.html" with field=form.currency %}
     {% include "includes/form_field.html" with field=form.default_split_rule %}
-    <button type="submit" class="btn btn-secondary">Créer manuellement</button>
+    <input type="hidden" name="ai_suggestions" id="ai-suggestions" value="">
+    <button type="submit" class="btn btn-primary">Créer le groupe</button>
   </form>
 
   <p class="auth-alt"><a href="{% url 'groups:list' %}">Annuler</a></p>
@@ -91,23 +95,34 @@
   const submitBtn = document.getElementById("ai-submit");
   const btnText   = document.getElementById("ai-btn-text");
   const spinner   = document.getElementById("ai-spinner");
+  const status    = document.getElementById("ai-status");
 
   const resultBox   = document.getElementById("ai-result");
-  const groupName   = document.getElementById("ai-group-name");
+  const catBlock    = document.getElementById("ai-categories-block");
   const catList     = document.getElementById("ai-categories");
   const budgetTable = document.getElementById("ai-budgets-table");
   const budgetBody  = document.getElementById("ai-budgets-body");
-  const redirectMsg = document.getElementById("ai-redirect-msg");
+  const hidden      = document.getElementById("ai-suggestions");
 
-  const errorBox    = document.getElementById("ai-error");
-  const errorMsg    = document.getElementById("ai-error-msg");
-  const retryBtn    = document.getElementById("ai-retry-btn");
+  const errorBox = document.getElementById("ai-error");
+  const errorMsg = document.getElementById("ai-error-msg");
+  const retryBtn = document.getElementById("ai-retry-btn");
+
+  const FIELDS = {
+    name: "id_name",
+    description: "id_description",
+    currency: "id_currency",
+    default_split_rule: "id_default_split_rule",
+  };
+  let suggestion = { categories: [], budgets: [] };
 
   function setLoading(loading) {
     submitBtn.disabled = loading;
-    btnText.hidden     = loading;
-    spinner.hidden     = !loading;
-    prompt.disabled    = loading;
+    submitBtn.setAttribute("aria-busy", loading ? "true" : "false");
+    btnText.hidden = loading;
+    spinner.hidden = !loading;
+    prompt.disabled = loading;
+    status.textContent = loading ? "Génération en cours…" : "";
   }
 
   function showError(msg, canRetry) {
@@ -117,43 +132,79 @@
     errorBox.hidden = false;
   }
 
+  // Le champ caché transmet au serveur les catégories gardées (revalidées côté serveur)
+  function syncHidden() {
+    const kept = suggestion.categories;
+    hidden.value = JSON.stringify({
+      categories: kept,
+      budgets: suggestion.budgets.filter((b) => kept.includes(b.category)),
+    });
+    catBlock.hidden = kept.length === 0;
+  }
+
+  function renderCategories() {
+    catList.replaceChildren();
+    suggestion.categories.forEach(function (cat) {
+      const li = document.createElement("li");
+      li.className = "ai-tag ai-tag-removable";
+      li.append(document.createTextNode(cat));  // texte : jamais interprété en HTML
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", "Retirer la catégorie " + cat);
+      remove.addEventListener("click", function () {
+        suggestion.categories = suggestion.categories.filter((c) => c !== cat);
+        renderCategories();
+        syncHidden();
+      });
+      li.append(remove);
+      catList.append(li);
+    });
+  }
+
+  function renderBudgets(currency) {
+    budgetBody.replaceChildren();
+    suggestion.budgets.forEach(function (b) {
+      const tr = document.createElement("tr");
+      const name = document.createElement("td");
+      name.textContent = b.category;
+      const amount = document.createElement("td");
+      amount.textContent = Number(b.amount).toLocaleString("fr-FR") + " " + currency;
+      tr.append(name, amount);
+      budgetBody.append(tr);
+    });
+    budgetTable.hidden = suggestion.budgets.length === 0;
+  }
+
+  function fillForm(fields) {
+    Object.entries(FIELDS).forEach(function ([key, id]) {
+      const input = document.getElementById(id);
+      if (!input || fields[key] === undefined) return;
+      input.value = fields[key];
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      input.classList.remove("ai-filled");
+      void input.offsetWidth;  // relance l'animation de surbrillance
+      input.classList.add("ai-filled");
+    });
+  }
+
   function showResult(data) {
     errorBox.hidden = true;
-
-    groupName.textContent = data.group_name;
-
-    // Catégories
-    catList.innerHTML = "";
-    (data.categories || []).forEach(function (cat) {
-      const li = document.createElement("li");
-      li.className = "ai-tag";
-      li.textContent = cat;
-      catList.appendChild(li);
-    });
-
-    // Budgets
-    budgetBody.innerHTML = "";
-    if (data.budgets && data.budgets.length > 0) {
-      data.budgets.forEach(function (b) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${b.category}</td><td>${b.amount.toLocaleString("fr-TN")} TND</td>`;
-        budgetBody.appendChild(tr);
-      });
-      budgetTable.hidden = false;
-    }
-
+    suggestion = { categories: data.categories || [], budgets: data.budgets || [] };
+    fillForm(data.fields || {});
+    renderCategories();
+    renderBudgets((data.fields && data.fields.currency) || "TND");
+    syncHidden();
     resultBox.hidden = false;
-
-    // Redirection automatique après 2.5 s
-    setTimeout(function () {
-      window.location.href = data.redirect;
-    }, 2500);
+    status.textContent = "Formulaire pré-rempli. Vérifiez puis créez le groupe.";
+    const name = document.getElementById(FIELDS.name);
+    name.focus();
+    name.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
-    errorBox.hidden  = true;
-    resultBox.hidden = true;
+    errorBox.hidden = true;
     setLoading(true);
 
     const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
@@ -178,7 +229,6 @@
     }
   });
 
-  // Bouton "Réessayer" : remet le focus sur le champ
   retryBtn.addEventListener("click", function () {
     errorBox.hidden = true;
     prompt.focus();
