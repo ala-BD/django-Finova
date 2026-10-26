@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ expense.title }} · Dépenses — Finova{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <header class="page-header">
+        <div>
+            <nav class="breadcrumb" aria-label="Fil d'Ariane">
+                <a href="{% url 'home' %}">Accueil</a> &rsaquo;
+                <span>{{ group.name }}</span> &rsaquo;
+                <a href="{% url 'expenses:list' gid=group.id %}">Dépenses</a> &rsaquo;
+                <span aria-current="page">{{ expense.title }}</span>
+            </nav>
+            <h1>{{ expense.title }}</h1>
+        </div>
+        <div class="header-actions">
+            {% if can_manage %}
+                <a href="{% url 'expenses:edit' gid=group.id pk=expense.pk %}" class="btn btn-secondary">
+                    Modifier
+                </a>
+                <a href="{% url 'expenses:delete' gid=group.id pk=expense.pk %}" class="btn btn-danger">
+                    Supprimer
+                </a>
+            {% endif %}
+            <a href="{% url 'expenses:list' gid=group.id %}" class="btn btn-outline">
+                &larr; Retour aux dépenses
+            </a>
+        </div>
+    </header>
+
+    <div class="detail-grid">
+        <!-- Informations générales -->
+        <section class="card detail-card" aria-labelledby="expense-info-title">
+            <h2 id="expense-info-title">Informations de la dépense</h2>
+            <dl class="meta-list">
+                <dt>Montant total</dt>
+                <dd><strong class="amount-large">{{ expense.amount|floatformat:3 }} {{ expense.currency }}</strong></dd>
+
+                <dt>Payé par</dt>
+                <dd>{{ expense.payer.user.get_full_name|default:expense.payer.user.username }}</dd>
+
+                <dt>Date</dt>
+                <dd>{{ expense.expense_date|date:"d F Y" }}</dd>
+
+                <dt>Catégorie</dt>
+                <dd>
+                    {% if expense.category %}
+                        <span class="badge" data-color="{{ expense.category.color }}">
+                            {{ expense.category.name }}
+                        </span>
+                    {% else %}
+                        <span class="text-muted">Aucune catégorie</span>
+                    {% endif %}
+                </dd>
+
+                <dt>Règle de partage</dt>
+                <dd><span class="badge badge-accent">{{ expense.get_split_rule_display }}</span></dd>
+
+                {% if expense.tax_amount > 0 or expense.tip_amount > 0 %}
+                    <dt>Taxe / Pourboire</dt>
+                    <dd>Taxe : {{ expense.tax_amount|floatformat:3 }} {{ expense.currency }} | Pourboire : {{ expense.tip_amount|floatformat:3 }} {{ expense.currency }}</dd>
+                {% endif %}
+
+                <dt>Saisie via</dt>
+                <dd>{{ expense.get_source_display }}</dd>
+            </dl>
+
+            {% if expense.receipt_image %}
+                <div class="receipt-preview">
+                    <h3>Ticket de caisse numérisé</h3>
+                    <img src="{{ expense.receipt_image.url }}" alt="Ticket joint pour {{ expense.title }}" class="img-responsive">
+                </div>
+            {% endif %}
+        </section>
+
+        <!-- Répartition calculée (ExpenseShares) -->
+        <section class="card shares-card" aria-labelledby="shares-title">
+            <h2 id="shares-title">Répartition des parts dues</h2>
+            <p class="section-desc">Calculée au millime exact selon la règle choisie (méthode du plus grand reste).</p>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Membre</th>
+                        <th scope="col">Part due</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for share in shares %}
+                        <tr {% if share.member.id == user_membership.id %}class="highlight-row"{% endif %}>
+                            <td>
+                                {{ share.member.user.get_full_name|default:share.member.user.username }}
+                                {% if share.member.id == user_membership.id %}<span class="badge badge-sm">Vous</span>{% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ share.amount_due|floatformat:3 }} {{ expense.currency }}</strong>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="2" class="text-muted">Aucune part calculée pour le moment.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <!-- Détail des lignes de ticket et réclamations (M2) -->
+    <section class="card items-section" aria-labelledby="items-title">
+        <div class="section-header">
+            <div>
+                <h2 id="items-title">Lignes du ticket & Réclamations d'articles</h2>
+                <p class="section-desc">Chaque membre réclame ses plats ou articles. La taxe et le pourboire sont répartis au prorata.</p>
+            </div>
+            {% if can_manage %}
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-item-dialog').classList.toggle('hidden');">
+                    + Ajouter une ligne d'article
+                </button>
+            {% endif %}
+        </div>
+
+        <!-- Formulaire d'ajout d'article (si admin ou payeur) -->
+        {% if can_manage %}
+            <div id="add-item-dialog" class="item-form-box hidden">
+                <h3>Ajouter un article au ticket</h3>
+                <form method="post" action="{% url 'expenses:item_add' gid=group.id pk=expense.pk %}">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <div class="field">
+                            <label for="id_label">Article / Plat</label>
+                            {{ item_form.label }}
+                        </div>
+                        <div class="field">
+                            <label for="id_unit_price">Prix unitaire ({{ expense.currency }})</label>
+                            {{ item_form.unit_price }}
+                        </div>
+                        <div class="field">
+                            <label for="id_quantity">Quantité</label>
+                            {{ item_form.quantity }}
+                        </div>
+                        <div class="field align-end">
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+
+        <!-- Tableau des articles -->
+        {% if items %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Article</th>
+                            <th scope="col">Quantité</th>
+                            <th scope="col">Prix unitaire</th>
+                            <th scope="col">Total</th>
+                            <th scope="col">Réclamé par</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td><strong>{{ item.label }}</strong></td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.unit_price|floatformat:3 }} {{ expense.currency }}</td>
+                                <td><strong>{{ item.total|floatformat:3 }} {{ expense.currency }}</strong></td>
+                                <td>
+                                    {% if item.claims.all %}
+                                        <div class="claimants-tags">
+                                            {% for claim in item.claims.all %}
+                                                <span class="badge badge-claimant">
+                                                    {{ claim.member.user.get_short_name|default:claim.member.user.username }}
+                                                </span>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted italic">Partagé par défaut</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="post" action="{% url 'expenses:item_claim' gid=group.id pk=expense.pk item_id=item.id %}">
+                                        {% csrf_token %}
+                                        {% with claimed=False %}
+                                            <button type="submit" class="btn-sm {% if user_membership in item.claims.all %}btn-claimed{% endif %}">
+                                                Réclamer / Annuler
+                                            </button>
+                                        {% endwith %}
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="empty-hint text-muted">
+                Aucun article détaillé pour ce ticket. Le montant global est réparti directement selon la règle du groupe.
+            </p>
+        {% endif %}
+    </section>
+</div>
+<script>
+    document.querySelectorAll('[data-color]').forEach(function(el) {
+        if (el.dataset.color) {
+            el.style.backgroundColor = el.dataset.color;
+            el.style.color = '#fff';
+        }
+    });
+</script>
+{% endblock %}
