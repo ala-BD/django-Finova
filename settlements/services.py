@@ -173,6 +173,27 @@ def debt_graph(group) -> dict:
     return {"nodes": nodes, "before": before, "after": after, "currency": group.currency}
 
 
+def member_balance_summary(group, user) -> dict:
+    """Solde d'UN utilisateur, lisible par un humain ou un LLM (contrat pour l'assistant M6) :
+    pas d'identifiants internes, uniquement des prénoms et des montants arrondis au millime."""
+    memberships = {m.user_id: m for m in group.active_memberships()}
+    balances = compute_balances(group)
+    name = lambda user_id: (  # noqa: E731
+        memberships[user_id].user.get_full_name() or memberships[user_id].user.username
+        if user_id in memberships else "ancien membre"
+    )
+    balance = balances.get(user.pk, ZERO)
+    transfers = simplify_debts(balances)
+    return {
+        "groupe": group.name,
+        "devise": group.currency,
+        "solde": str(balance),
+        "situation": "créancier" if balance > 0 else "débiteur" if balance < 0 else "à l'équilibre",
+        "je_dois": [{"à": name(c), "montant": str(a)} for d, c, a in transfers if d == user.pk],
+        "on_me_doit": [{"de": name(d), "montant": str(a)} for d, c, a in transfers if c == user.pk],
+    }
+
+
 def balance_overview(group) -> dict:
     """Données de la page des soldes : lignes par membre et virements simplifiés."""
     memberships = {m.user_id: m for m in group.active_memberships()}
