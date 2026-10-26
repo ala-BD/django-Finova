@@ -3,7 +3,7 @@
     python manage.py m3_demo            # crée le groupe de démo s'il n'existe pas
     python manage.py m3_demo --reset    # le recrée
 
-Comptes : demo_ala, demo_yahya, demo_linda, demo_zahra, demo_wassim — mot de passe affiché à la fin.
+Comptes : demo_imem, demo_ala, demo_yahya, demo_linda, demo_zahra, demo_wassim — mot de passe affiché à la fin.
 """
 
 from datetime import timedelta
@@ -50,6 +50,7 @@ class Command(BaseCommand):
             ("demo_linda", "Linda", "senior"),
             ("demo_zahra", "Zahra", "active"),
             ("demo_wassim", "Wassim", "student"),
+            ("demo_imem", "Imem", "student"),
         ]:
             user, _ = User.objects.get_or_create(
                 username=username,
@@ -82,8 +83,13 @@ class Command(BaseCommand):
             settlement = services.create_settlement(group, m[payer], m[receiver], Decimal(amount))
             services.confirm_settlement(settlement, users[receiver])
 
-        # 2. Remboursement en attente de confirmation par Ala
+        # Imem a déjà remboursé Zahra (confirmé)
+        imem_paid = services.create_settlement(group, m["Imem"], m["Zahra"], Decimal("22"), note="Espèces")
+        services.confirm_settlement(imem_paid, users["Zahra"])
+
+        # 2. Remboursements en attente : par Ala, et par Imem (pour la démo de M3 en tant qu'Imem)
         services.create_settlement(group, m["Yahya"], m["Ala"], Decimal("60"), note="Virement du loyer")
+        services.create_settlement(group, m["Wassim"], m["Imem"], Decimal("35"), note="Courses du marché")
 
         # 3. Remboursement avec échéancier commencé il y a 40 jours, première échéance payée en retard
         settlement = services.create_settlement(group, m["Linda"], m["Yahya"], Decimal("150"))
@@ -100,7 +106,7 @@ class Command(BaseCommand):
 
     def print_access(self, group):
         self.stdout.write(
-            f"Connexion : demo_ala, demo_yahya, demo_linda, demo_zahra, demo_wassim — mot de passe : {PASSWORD}\n"
+            f"Connexion : demo_imem, demo_ala, demo_yahya, demo_linda, demo_zahra, demo_wassim — mot de passe : {PASSWORD}\n"
             f"Soldes : http://127.0.0.1:8000/groups/{group.pk}/balances/\n"
             f"Remboursements : http://127.0.0.1:8000/groups/{group.pk}/settlements/"
         )

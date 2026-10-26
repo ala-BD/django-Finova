@@ -12,7 +12,7 @@ python manage.py m3_demo          # groupe de démo (DEBUG uniquement), --reset 
 python manage.py runserver
 ```
 
-Comptes de démo : `demo_ala`, `demo_yahya`, `demo_linda`, `demo_zahra`, `demo_wassim`, mot de
+Comptes de démo : `demo_imem`, `demo_ala`, `demo_yahya`, `demo_linda`, `demo_zahra`, `demo_wassim`, mot de
 passe `finova-demo-2026`.
 Depuis la fiche d'un groupe : boutons **Soldes** et **Remboursements**.
 
