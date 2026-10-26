@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from groups.models import Group, Invitation, Membership
-from groups.services import can_leave, split_by_weight
+from groups.services import can_leave, preview_split, split_by_weight, split_equally
 
 
 User = get_user_model()
@@ -97,6 +97,42 @@ class ServiceTests(TestCase):
         self.assertEqual(parts["actif"], Decimal("30.000"))
         self.assertEqual(parts["senior"], Decimal("45.000"))
         self.assertEqual(sum(parts.values()), Decimal("90.000"))
+
+    def test_split_equally(self):
+        parts = split_equally(Decimal("90"), ["a", "b", "c"])
+        self.assertEqual(parts["a"], Decimal("30.000"))
+        self.assertEqual(sum(parts.values()), Decimal("90.000"))
+
+    def test_preview_by_weight(self):
+        admin = User.objects.create_user(username="p1", email="p1@example.com", password="x")
+        member = User.objects.create_user(username="p2", email="p2@example.com", password="x")
+        group = Group.objects.create(
+            name="Équité",
+            default_split_rule=Group.SplitRule.BY_WEIGHT,
+        )
+        Membership.objects.create(
+            group=group, user=admin, role=Membership.Role.ADMIN, weight=Decimal("1")
+        )
+        Membership.objects.create(
+            group=group, user=member, role=Membership.Role.MEMBER, weight=Decimal("2")
+        )
+        preview = preview_split(group, Decimal("90"))
+        shares = {row["membership"].user_id: row["share"] for row in preview["rows"]}
+        self.assertEqual(shares[admin.pk], Decimal("30.000"))
+        self.assertEqual(shares[member.pk], Decimal("60.000"))
+
+    def test_consumption_falls_back_to_equal(self):
+        user = User.objects.create_user(username="p3", email="p3@example.com", password="x")
+        other = User.objects.create_user(username="p4", email="p4@example.com", password="x")
+        group = Group.objects.create(
+            name="Tickets",
+            default_split_rule=Group.SplitRule.BY_CONSUMPTION,
+        )
+        Membership.objects.create(group=group, user=user, role=Membership.Role.ADMIN)
+        Membership.objects.create(group=group, user=other, role=Membership.Role.MEMBER)
+        preview = preview_split(group, Decimal("90"))
+        self.assertEqual(preview["used_rule"], Group.SplitRule.EQUAL)
+        self.assertIn("repli", preview["note"].lower())
 
     @patch("groups.services.get_member_balance", return_value=Decimal("12.500"))
     def test_cannot_leave_with_nonzero_balance(self, _mock):
@@ -194,6 +230,33 @@ class GroupViewTests(GroupFixturesMixin, TestCase):
         )
         self.member_membership.refresh_from_db()
         self.assertEqual(self.member_membership.weight, Decimal("3.000"))
+
+    def test_apply_profile_weight(self):
+        self.member.income_profile = User.IncomeProfile.SENIOR
+        self.member.save()
+        self.client.force_login(self.admin)
+        url = reverse(
+            "groups:member_edit",
+            kwargs={"gid": self.group.pk, "mid": self.member_membership.pk},
+        )
+        self.client.post(
+            url,
+            {"role": "member", "weight": "9.000", "use_profile_weight": "on"},
+        )
+        self.member_membership.refresh_from_db()
+        self.assertEqual(self.member_membership.weight, Decimal("3.000"))
+
+    def test_equity_preview_on_detail(self):
+        self.group.default_split_rule = Group.SplitRule.BY_WEIGHT
+        self.group.save()
+        self.client.force_login(self.admin)
+        response = self.client.get(
+            reverse("groups:detail", kwargs={"gid": self.group.pk}),
+            {"amount": "90"},
+        )
+        self.assertContains(response, "Profils d'équité")
+        self.assertContains(response, "30,000")
+        self.assertContains(response, "60,000")
 
 
 class InvitationViewTests(GroupFixturesMixin, TestCase):

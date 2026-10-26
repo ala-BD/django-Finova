@@ -28,7 +28,7 @@
             <tr>
                 <th scope="col">Membre</th>
                 <th scope="col">Rôle</th>
-                <th scope="col">Poids</th>
+                <th scope="col">Poids (profil)</th>
                 <th scope="col">Solde</th>
                 {% if is_group_admin %}<th scope="col">Actions</th>{% endif %}
             </tr>
@@ -38,7 +38,10 @@
                 <tr>
                     <td>{{ member.user.get_full_name|default:member.user.username }}</td>
                     <td>{{ member.get_role_display }}</td>
-                    <td>{{ member.weight }}</td>
+                    <td>
+                        {{ member.weight }}
+                        <span class="muted">({{ member.user.get_income_profile_display }} → {{ member.suggested_weight }})</span>
+                    </td>
                     <td>{{ member.balance }} {{ group.currency }}</td>
                     {% if is_group_admin %}
                         <td>
@@ -65,4 +68,35 @@
     {% endif %}
 </section>
 {% endif %}
+
+<section class="equity">
+    <h2>Profils d'équité</h2>
+    <p>{{ preview.note }}</p>
+    <form class="preview-form" method="get">
+        {% include "includes/form_field.html" with field=preview_form.amount %}
+        <button type="submit" class="btn btn-primary btn-inline">Simuler la répartition</button>
+    </form>
+    <table class="data-table">
+        <caption>
+            Répartition de {{ preview.amount }} {{ group.currency }}
+            ({{ group.get_default_split_rule_display|lower }})
+        </caption>
+        <thead>
+            <tr>
+                <th scope="col">Membre</th>
+                <th scope="col">Poids</th>
+                <th scope="col">Part</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in preview.rows %}
+                <tr>
+                    <td>{{ row.membership.user.get_full_name|default:row.membership.user.username }}</td>
+                    <td>{{ row.weight }}</td>
+                    <td>{{ row.share }} {{ group.currency }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
 {% endblock %}

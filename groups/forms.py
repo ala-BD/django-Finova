@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from accounts.forms import AccessibleFormMixin
 
 from .models import Group, Invitation, Membership
+from .services import default_weight_for
 
 
 class GroupForm(AccessibleFormMixin, forms.ModelForm):
@@ -14,6 +15,12 @@ class GroupForm(AccessibleFormMixin, forms.ModelForm):
         fields = ("name", "description", "currency", "default_split_rule")
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
+        }
+        help_texts = {
+            "default_split_rule": (
+                "Égale : même part. Proportionnelle au revenu : selon le poids "
+                "(1 / 2 / 3). Proportionnelle à la consommation : selon le ticket (M2)."
+            ),
         }
 
     def __init__(self, *args, currency_locked=False, **kwargs):
@@ -32,11 +39,20 @@ class GroupForm(AccessibleFormMixin, forms.ModelForm):
 
 
 class MembershipForm(AccessibleFormMixin, forms.ModelForm):
+    use_profile_weight = forms.BooleanField(
+        required=False,
+        label="Appliquer le poids du profil de revenu",
+        help_text="Étudiant = 1, actif = 2, actif senior = 3.",
+    )
+
     class Meta:
         model = Membership
         fields = ("role", "weight")
         widgets = {
             "weight": forms.NumberInput(attrs={"step": "0.001", "min": "0.001"}),
+        }
+        help_texts = {
+            "weight": "Doit être > 0. Exemple : 90 TND avec poids 1, 2 et 3 → 15 / 30 / 45.",
         }
 
     def clean_weight(self):
@@ -49,6 +65,8 @@ class MembershipForm(AccessibleFormMixin, forms.ModelForm):
         cleaned = super().clean()
         membership = self.instance
         role = cleaned.get("role")
+        if cleaned.get("use_profile_weight") and membership.pk:
+            cleaned["weight"] = default_weight_for(membership.user)
         if (
             membership.pk
             and membership.role == Membership.Role.ADMIN
@@ -60,6 +78,17 @@ class MembershipForm(AccessibleFormMixin, forms.ModelForm):
                 "Le groupe doit toujours conserver au moins un admin.",
             )
         return cleaned
+
+
+class SplitPreviewForm(AccessibleFormMixin, forms.Form):
+    amount = forms.DecimalField(
+        label="Montant à répartir",
+        min_value=Decimal("0.001"),
+        decimal_places=3,
+        max_digits=12,
+        initial=Decimal("90.000"),
+        widget=forms.NumberInput(attrs={"step": "0.001", "min": "0.001"}),
+    )
 
 
 class InvitationForm(AccessibleFormMixin, forms.ModelForm):

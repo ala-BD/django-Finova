@@ -354,6 +354,28 @@ main {
     max-width: 32rem;
 }
 
+.muted {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 0.9rem;
+}
+
+.equity {
+    margin-top: 2rem;
+}
+
+.preview-form {
+    max-width: 20rem;
+    margin-bottom: 1rem;
+}
+
+.data-table caption {
+    caption-side: top;
+    text-align: left;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
 footer {
     border-top: 1px solid var(--border);
     color: var(--muted);

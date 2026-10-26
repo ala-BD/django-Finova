@@ -9,9 +9,17 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from core.permissions import GroupAdminRequiredMixin, GroupMemberRequiredMixin
 
-from .forms import GroupForm, InvitationForm, MembershipForm
+from decimal import Decimal
+
+from .forms import GroupForm, InvitationForm, MembershipForm, SplitPreviewForm
 from .models import Group, Invitation, Membership
-from .services import can_leave, default_weight_for, get_member_balance, is_admin
+from .services import (
+    can_leave,
+    default_weight_for,
+    get_member_balance,
+    is_admin,
+    preview_split,
+)
 
 
 class GroupListView(LoginRequiredMixin, ListView):
@@ -68,6 +76,17 @@ class GroupDetailView(GroupMemberRequiredMixin, DetailView):
         members = list(group.active_memberships())
         for membership in members:
             membership.balance = get_member_balance(membership.user, group)
+            membership.suggested_weight = default_weight_for(membership.user)
+        if self.request.GET.get("amount"):
+            preview_form = SplitPreviewForm(self.request.GET)
+            amount = (
+                preview_form.cleaned_data["amount"]
+                if preview_form.is_valid()
+                else Decimal("90.000")
+            )
+        else:
+            preview_form = SplitPreviewForm(initial={"amount": Decimal("90.000")})
+            amount = Decimal("90.000")
         context.update(
             {
                 "members": members,
@@ -76,6 +95,8 @@ class GroupDetailView(GroupMemberRequiredMixin, DetailView):
                     expires_at__gt=timezone.now(),
                 ),
                 "is_group_admin": is_admin(self.request.user, group),
+                "preview_form": preview_form,
+                "preview": preview_split(group, amount),
             }
         )
         return context
@@ -161,7 +182,10 @@ class MembershipUpdateView(GroupAdminRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        membership = self.object
         context["group"] = self.get_group()
+        context["suggested_weight"] = default_weight_for(membership.user)
+        context["income_profile"] = membership.user.get_income_profile_display()
         return context
 
 
