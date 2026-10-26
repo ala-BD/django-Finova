@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Dépenses · {{ group.name }} — Finova{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <header class="page-header">
+        <div>
+            <nav class="breadcrumb" aria-label="Fil d'Ariane">
+                <a href="{% url 'home' %}">Accueil</a> &rsaquo;
+                <span>{{ group.name }}</span> &rsaquo;
+                <span aria-current="page">Dépenses</span>
+            </nav>
+            <h1>Dépenses du groupe : {{ group.name }}</h1>
+        </div>
+        <div>
+            <a href="{% url 'expenses:create' gid=group.id %}" class="btn btn-primary">
+                + Ajouter une dépense
+            </a>
+        </div>
+    </header>
+
+    <!-- Résumé financier du groupe -->
+    <section class="summary-cards" aria-label="Statistiques des dépenses">
+        <article class="stat-card">
+            <h3>Total du groupe</h3>
+            <p class="stat-value">{{ total_group_amount|floatformat:3 }} {{ group.currency }}</p>
+        </article>
+        <article class="stat-card">
+            <h3>Vous avez payé</h3>
+            <p class="stat-value text-accent">{{ user_paid_total|floatformat:3 }} {{ group.currency }}</p>
+        </article>
+        <article class="stat-card">
+            <h3>Votre part due</h3>
+            <p class="stat-value text-muted">{{ user_share_total|floatformat:3 }} {{ group.currency }}</p>
+        </article>
+    </section>
+
+    <!-- Formulaire de filtrage -->
+    <section class="filter-section">
+        <form method="get" class="filter-form" role="search" aria-label="Filtrer les dépenses">
+            <div class="filter-grid">
+                <div class="field">
+                    <label for="id_q">Recherche</label>
+                    {{ filter_form.q }}
+                </div>
+                <div class="field">
+                    <label for="id_category">Catégorie</label>
+                    {{ filter_form.category }}
+                </div>
+                <div class="field">
+                    <label for="id_payer">Payeur</label>
+                    {{ filter_form.payer }}
+                </div>
+                <div class="field">
+                    <label for="id_period">Période (AAAA-MM)</label>
+                    {{ filter_form.period }}
+                </div>
+                <div class="field filter-actions">
+                    <button type="submit" class="btn btn-secondary">Filtrer</button>
+                    <a href="{% url 'expenses:list' gid=group.id %}" class="btn btn-outline">Réinitialiser</a>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <!-- Liste des dépenses -->
+    <section class="expenses-list" aria-label="Liste détaillée des dépenses">
+        {% if expenses %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Titre</th>
+                            <th scope="col">Catégorie</th>
+                            <th scope="col">Payé par</th>
+                            <th scope="col">Règle</th>
+                            <th scope="col">Montant</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for expense in expenses %}
+                            <tr>
+                                <td>{{ expense.expense_date|date:"d/m/Y" }}</td>
+                                <td>
+                                    <strong>
+                                        <a href="{% url 'expenses:detail' gid=group.id pk=expense.pk %}">
+                                            {{ expense.title }}
+                                        </a>
+                                    </strong>
+                                </td>
+                                <td>
+                                    {% if expense.category %}
+                                        <span class="badge" data-color="{{ expense.category.color }}">
+                                            {{ expense.category.name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ expense.payer.user.get_full_name|default:expense.payer.user.username }}</td>
+                                <td>
+                                    <span class="badge badge-outline">{{ expense.get_split_rule_display }}</span>
+                                </td>
+                                <td class="amount-cell">
+                                    <strong>{{ expense.amount|floatformat:3 }} {{ expense.currency }}</strong>
+                                </td>
+                                <td>
+                                    <a href="{% url 'expenses:detail' gid=group.id pk=expense.pk %}" class="btn-sm">
+                                        Voir
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+                <nav class="pagination" aria-label="Pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}" class="btn-sm">&laquo; Précédent</a>
+                    {% endif %}
+                    <span class="page-current">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="btn-sm">Suivant &raquo;</a>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <p>Aucune dépense enregistrée dans ce groupe pour les critères sélectionnés.</p>
+                <a href="{% url 'expenses:create' gid=group.id %}" class="btn btn-primary">
+                    Ajouter la première dépense
+                </a>
+            </div>
+        {% endif %}
+    </section>
+</div>
+<script>
+    document.querySelectorAll('[data-color]').forEach(function(el) {
+        if (el.dataset.color) {
+            el.style.backgroundColor = el.dataset.color;
+            el.style.color = '#fff';
+        }
+    });
+</script>
+{% endblock %}

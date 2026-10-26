@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} · {{ group.name }} — Finova{% endblock %}
+
+{% block content %}
+<div class="page-container form-container">
+    <header class="page-header">
+        <div>
+            <nav class="breadcrumb" aria-label="Fil d'Ariane">
+                <a href="{% url 'home' %}">Accueil</a> &rsaquo;
+                <span>{{ group.name }}</span> &rsaquo;
+                <a href="{% url 'expenses:list' gid=group.id %}">Dépenses</a> &rsaquo;
+                <span aria-current="page">{{ title }}</span>
+            </nav>
+            <h1>{{ title }}</h1>
+        </div>
+    </header>
+
+    <article class="auth-card form-card">
+        {% if form.non_field_errors %}
+            <div class="alert alert-error" role="alert" aria-live="assertive">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+
+            {% for field in form %}
+                {% include "includes/form_field.html" with field=field %}
+            {% endfor %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Enregistrer la dépense</button>
+                <a href="{% url 'expenses:list' gid=group.id %}" class="btn btn-outline">Annuler</a>
+            </div>
+        </form>
+    </article>
+</div>
+{% endblock %}

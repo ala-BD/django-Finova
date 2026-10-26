@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Supprimer la dépense · {{ expense.title }} — Finova{% endblock %}
+
+{% block content %}
+<div class="page-container form-container">
+    <article class="auth-card danger-card">
+        <h1>Supprimer la dépense</h1>
+        <p>
+            Êtes-vous sûr de vouloir supprimer définitivement la dépense
+            <strong>« {{ expense.title }} »</strong> d'un montant de
+            <strong>{{ expense.amount|floatformat:3 }} {{ expense.currency }}</strong> ?
+        </p>
+        <p class="text-danger">
+            ⚠️ Cette action supprimera également tous les articles de ticket associés ainsi que le calcul des parts.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">Oui, supprimer définitivement</button>
+                <a href="{% url 'expenses:detail' gid=group.id pk=expense.pk %}" class="btn btn-outline">Annuler</a>
+            </div>
+        </form>
+    </article>
+</div>
+{% endblock %}
