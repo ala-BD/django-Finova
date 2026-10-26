@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} une règle de rappel{% endblock %}
+{% block content %}
+<h1>{{ action }} une règle de rappel</h1>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Enregistrer</button>
+</form>
+<p><a href="{% url 'automation:recurring_detail' gid=group.pk pk=expense.pk %}">Retour</a></p>
+{% endblock %}

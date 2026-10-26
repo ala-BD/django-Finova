@@ -1,13 +1,8 @@
 def notifications(request):
-    """Compteur de notifications non lues. Wassim (M6) branche le vrai modèle."""
+    """Compteur des notifications non lues de l'utilisateur courant."""
     unread = 0
     if request.user.is_authenticated:
-        try:
-            from automation.models import Notification
+        from automation.models import Notification
 
-            unread = Notification.objects.filter(
-                user=request.user, is_read=False
-            ).count()
-        except Exception:
-            unread = 0
+        unread = Notification.objects.filter(user=request.user, is_read=False).count()
     return {"unread_notifications": unread}

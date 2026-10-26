@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} une dépense récurrente{% endblock %}
+{% block content %}
+<h1>{{ action }} une dépense récurrente</h1>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Enregistrer</button>
+</form>
+<p><a href="{% url 'automation:recurring_list' gid=group.pk %}">Retour</a></p>
+{% endblock %}

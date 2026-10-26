@@ -15,7 +15,7 @@ urlpatterns = [
     path("groups/<int:gid>/", include("settlements.urls")),
     path("budgets/", include("budgets.urls")),
     path("analytics/", include("analytics.urls")),
-    path("automation/", include("automation.urls")),
+    path("", include("automation.urls")),
 ]
 
 handler400 = "core.views.error_400"

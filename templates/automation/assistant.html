@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Assistant Finova{% endblock %}
+{% block content %}
+<h1>Assistant Finova</h1>
+<section class="assistant-chat" aria-label="Conversation avec l'assistant">
+  <form id="assistant-form" method="post" action="{% url 'automation:assistant_chat' %}">
+    {% csrf_token %}
+    <label for="assistant-question">Votre question</label>
+    <textarea id="assistant-question" name="question" rows="4" maxlength="2000" required placeholder="Ex. Quelles sont mes dépenses ce mois-ci ?"></textarea>
+    <button type="submit">Envoyer</button>
+  </form>
+  <p id="assistant-loading" role="status" aria-live="polite" hidden>Réponse en cours…</p>
+  <p id="assistant-error" role="alert" hidden></p>
+  <div id="assistant-output" aria-live="polite">
+    {% if history %}
+      <h2>Historique</h2>
+      {% for item in history %}
+        <div class="chat-message">
+          <strong>Vous — {{ item.created_at|date:"d/m/Y H:i" }}</strong>
+          <p>{{ item.question }}</p>
+          <strong>Assistant</strong>
+          <p>{{ item.answer }}</p>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>Commencez une conversation avec l'assistant.</p>
+    {% endif %}
+  </div>
+</section>
+<script>
+  const form = document.getElementById('assistant-form');
+  const loading = document.getElementById('assistant-loading');
+  const errorBox = document.getElementById('assistant-error');
+  const output = document.getElementById('assistant-output');
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const formData = new FormData(form);
+    loading.hidden = false;
+    errorBox.hidden = true;
+    form.querySelector('button[type="submit"]').disabled = true;
+
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: {'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value},
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || 'Erreur');
+      }
+      const entry = document.createElement('article');
+      entry.className = 'chat-message';
+      const questionLabel = document.createElement('strong');
+      questionLabel.textContent = 'Vous';
+      const questionText = document.createElement('p');
+      questionText.textContent = formData.get('question');
+      const answerLabel = document.createElement('strong');
+      answerLabel.textContent = 'Assistant';
+      const answerText = document.createElement('p');
+      answerText.textContent = payload.answer;
+      entry.append(questionLabel, questionText, answerLabel, answerText);
+      output.prepend(entry);
+      form.reset();
+    } catch (error) {
+      errorBox.textContent = error.message || 'L’assistant est indisponible.';
+      errorBox.hidden = false;
+    } finally {
+      loading.hidden = true;
+      form.querySelector('button[type="submit"]').disabled = false;
+    }
+  });
+</script>
+{% endblock %}

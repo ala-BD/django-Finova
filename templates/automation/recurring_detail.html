@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ expense.title }}{% endblock %}
+{% block content %}
+<h1>{{ expense.title }}</h1>
+<p>Groupe : {{ group.name }}</p>
+<p>Montant : {{ expense.amount }} TND</p>
+<p>Fréquence : {{ expense.get_frequency_display }}</p>
+<p>Prochaine exécution : {{ expense.next_run }}</p>
+<p>Statut : <span class="status-badge status-{{ expense.status }}">{{ expense.get_status_display }}</span></p>
+<p><a href="{% url 'automation:recurring_edit' gid=group.pk pk=expense.pk %}">Modifier</a> |
+<a href="{% url 'automation:recurring_delete' gid=group.pk pk=expense.pk %}">Supprimer</a></p>
+
+<h2>Règles de rappel</h2>
+<p><a href="{% url 'automation:reminder_create' gid=group.pk pk=expense.pk %}">Ajouter une règle</a></p>
+{% if reminder_rules %}
+<ul>
+  {% for rule in reminder_rules %}
+    <li>
+      {{ rule.days_before }} jours avant — {{ rule.channel }} — {% if rule.enabled %}Actif{% else %}Désactivé{% endif %}
+      <a href="{% url 'automation:reminder_edit' gid=group.pk pk=expense.pk rule_id=rule.pk %}">Modifier</a>
+      <a href="{% url 'automation:reminder_delete' gid=group.pk pk=expense.pk rule_id=rule.pk %}">Supprimer</a>
+    </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Aucune règle de rappel.</p>
+{% endif %}
+{% endblock %}

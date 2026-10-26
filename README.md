@@ -79,3 +79,36 @@ URL : `/analytics/` (tableau de bord), `/analytics/filters/`, `/analytics/report
 - **Métriques** : `python manage.py analytics_evaluate` (écrit `ml/m5_metrics.json`).
 - **Tests et couverture** : `python manage.py test analytics` ;
   `coverage run manage.py test && coverage report` (configuration dans `.coveragerc`).
+
+## Automatisation M6
+
+Les commandes planifiables sont disponibles sans Redis :
+
+```bash
+python manage.py generate_recurring
+python manage.py send_recurring_reminders
+```
+
+En production, configurer deux tâches cron Render (ou un planificateur équivalent)
+qui exécutent ces commandes quotidiennement avec le même `DATABASE_URL`,
+`DJANGO_SETTINGS_MODULE` et les variables email du service web. Les fréquences
+hebdomadaires, mensuelles et annuelles sont calculées à partir de `next_run`.
+Les occurrences et rappels ont une contrainte d'unicité en base afin de limiter
+les doublons lors de relances ou d'exécutions concurrentes.
+
+Celery est présent dans le dépôt et les tâches sont aussi exposées dans
+`automation.tasks`, mais le déploiement Render ne configure pas de Redis :
+les commandes cron sont donc le mécanisme d'exécution recommandé. Pour les emails,
+configurer `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`,
+`EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` et `DEFAULT_FROM_EMAIL`. La clé IA est
+fournie via `LLM_API_KEY`; elle n'est jamais stockée dans le dépôt.
+
+L'intégration M6 attend les contrats des modules concernés :
+`groups.Group` avec `memberships`, `expenses.services.create_expense`,
+`expenses.services.get_group_expenses`, `settlements.services.compute_balances`
+et `budgets.services.get_budget_status`. Tant que ces modèles et services ne
+sont pas intégrés, les vues liées aux groupes répondent explicitement que M1 est
+indisponible et la génération récurrente journalise l'indisponibilité de M2.
+En attendant le modèle M1, M6 conserve le groupe sous forme de `group_id` indexé
+sans créer de table de groupe concurrente; une migration vers une véritable clé
+étrangère devra suivre l'intégration du modèle officiel.

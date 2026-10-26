@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Supprimer la règle{% endblock %}
+{% block content %}
+<h1>Supprimer la règle de rappel ?</h1>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit">Confirmer</button>
+  <a href="{% url 'automation:recurring_detail' gid=group.pk pk=expense.pk %}">Annuler</a>
+</form>
+{% endblock %}
