@@ -245,11 +245,13 @@ class ReminderViewsTests(SettlementFixturesMixin, TestCase):
 
     def test_send_warns_when_notifications_unavailable(self):
         self.client.force_login(self.ala)
-        response = self.client.post(
-            url("reminder_send", self.group, sid=self.settlement_obj.pk),
-            {"message": "Merci de rembourser."},
-            follow=True,
-        )
+        # Panne simulée explicitement : le test reste valable une fois M6 fusionné
+        with patch("automation.services.notify", side_effect=RuntimeError("M6 indisponible")):
+            response = self.client.post(
+                url("reminder_send", self.group, sid=self.settlement_obj.pk),
+                {"message": "Merci de rembourser."},
+                follow=True,
+            )
         self.assertContains(response, "notifications (M6) ne sont pas encore disponibles")
 
     def test_send_uses_notify(self):

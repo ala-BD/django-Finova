@@ -116,9 +116,11 @@ class SettlementWorkflowTests(SettlementFixturesMixin, TestCase):
             services.reject_settlement(settlement, self.ala)
 
     def test_notification_failure_never_blocks(self):
-        # notify (M6) n'est pas implémenté sur cette branche : la création doit réussir quand même
-        settlement = services.create_settlement(self.group, self.m_yahya, self.m_ala, D("5"))
-        self.assertIsNotNone(settlement.pk)
+        with patch("automation.services.notify", side_effect=RuntimeError("M6 indisponible")):
+            settlement = services.create_settlement(self.group, self.m_yahya, self.m_ala, D("5"))
+            services.confirm_settlement(settlement, self.ala)
+        settlement.refresh_from_db()
+        self.assertEqual(settlement.status, Settlement.Status.CONFIRMED)
 
     def test_notifies_through_m6_contract(self):
         with patch("automation.services.notify") as notify:
