@@ -114,8 +114,12 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Finova <noreply@finova.app>")
 
-LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")          # Google Gemini (fournisseur principal)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")        # Groq, utilisé si Gemini ne répond pas
 LLM_TIMEOUT_SECONDS = int(os.environ.get("LLM_TIMEOUT_SECONDS", "20"))
+# Listes de modèles, séparées par des virgules (laisser vide pour les valeurs par défaut de core/ai.py)
+GEMINI_MODELS = [m.strip() for m in os.environ.get("GEMINI_MODELS", "").split(",") if m.strip()]
+GROQ_MODELS = [m.strip() for m in os.environ.get("GROQ_MODELS", "").split(",") if m.strip()]
 
 # M5 Analytics : jeu de démonstration tant que M1/M2 ne sont pas livrés,
 # API de taux de change (vide = repli sur les derniers taux connus puis les taux fixes).
