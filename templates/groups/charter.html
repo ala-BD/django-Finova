@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load safe_markdown %}
+{% block title %}Charte · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="back"><a href="{% url 'groups:detail' group.pk %}">← {{ group.name }}</a></p>
+        <h1>Charte du groupe</h1>
+        {% if charter %}
+            <p class="muted">
+                {{ charter.get_group_type_display }} · mise à jour le {{ charter.updated_at|date:"d/m/Y" }}
+                {% if charter.updated_by %}par {{ charter.updated_by.get_full_name|default:charter.updated_by.username }}{% endif %}
+                {% if charter.generated_by_ai %}· <span class="ai-badge">✦ IA</span> rédigée avec l'assistant{% endif %}
+            </p>
+        {% endif %}
+    </div>
+    {% if is_group_admin %}
+        <p class="actions">
+            <a class="btn btn-primary btn-inline" href="{% url 'groups:charter_edit' group.pk %}">
+                {% if charter %}Modifier la charte{% else %}Rédiger la charte{% endif %}
+            </a>
+        </p>
+    {% endif %}
+</div>
+
+{% if charter %}
+    <article class="card charter">
+        {{ charter.content|markdown }}
+        {% if charter.key_rules %}
+            <p class="charter-keys"><strong>Règles clés de départ :</strong> {{ charter.key_rules }}</p>
+        {% endif %}
+    </article>
+{% else %}
+    <div class="card charter-empty">
+        <p class="ai-badge">✦ IA</p>
+        <h2>Pas encore de charte</h2>
+        <p>La charte rassemble les règles de vie du groupe : quand saisir les dépenses, quand rembourser, comment régler un désaccord…</p>
+        {% if is_group_admin %}
+            <p>Indiquez le type de groupe et vos règles clés : l'assistant rédige une proposition que vous pourrez modifier.</p>
+            <p><a class="btn btn-primary btn-inline" href="{% url 'groups:charter_edit' group.pk %}">Rédiger la charte avec l'IA</a></p>
+        {% else %}
+            <p class="muted">Un administrateur du groupe peut la rédiger.</p>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

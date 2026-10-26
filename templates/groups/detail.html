@@ -12,6 +12,7 @@
             <a class="btn btn-inline" href="{% url 'groups:invite' group.pk %}">Inviter</a>
             <a class="btn btn-inline btn-danger" href="{% url 'groups:delete' group.pk %}">Archiver</a>
         {% endif %}
+        <a class="btn btn-inline" href="{% url 'groups:charter' group.pk %}">Charte</a>
         <a class="btn btn-inline" href="{% url 'expenses:list' gid=group.pk %}">Dépenses</a>
         <a class="btn btn-inline" href="{% url 'settlements:balances' group.pk %}">Soldes</a>
         <a class="btn btn-inline" href="{% url 'settlements:list' group.pk %}">Remboursements</a>
@@ -74,6 +75,7 @@
 
 <section class="equity">
     <h2>Profils d'équité</h2>
+    <p><a class="btn btn-inline btn-ai" href="{% url 'groups:equity' group.pk %}">✦ Coach d'équité : quelle règle choisir ?</a></p>
     <p>{{ preview.note }}</p>
     <form class="preview-form" method="get">
         {% include "includes/form_field.html" with field=preview_form.amount %}

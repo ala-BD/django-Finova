@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Rédiger la charte · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+<article class="auth-card auth-card-wide charter-editor">
+    <p class="back"><a href="{% url 'groups:charter' group.pk %}">← Charte de {{ group.name }}</a></p>
+    <h1>Charte du groupe</h1>
+    <p class="muted">Choisissez le type de groupe et écrivez vos règles clés, puis laissez l'IA rédiger une proposition. Vous gardez la main : relisez et modifiez avant d'enregistrer.</p>
+
+    {% include "includes/form_errors.html" with form=form %}
+    <form method="post" id="charter-form" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.group_type %}
+        {% include "includes/form_field.html" with field=form.key_rules %}
+
+        <div class="charter-ai">
+            <button type="button" class="btn btn-inline btn-ai" id="charter-generate"
+                    data-url="{% url 'groups:charter_generate' group.pk %}">
+                <span class="btn-text">✦ Rédiger avec l'IA</span>
+                <span class="spinner" hidden aria-hidden="true"></span>
+            </button>
+            <p id="charter-status" class="muted" role="status" aria-live="polite"></p>
+        </div>
+
+        {% include "includes/form_field.html" with field=form.content %}
+        <input type="hidden" name="ai_generated" id="ai-generated" value="0">
+        <button type="submit" class="btn btn-primary">Enregistrer la charte</button>
+    </form>
+    <p class="auth-alt"><a href="{% url 'groups:charter' group.pk %}">Annuler</a></p>
+</article>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const button = document.getElementById("charter-generate");
+    const status = document.getElementById("charter-status");
+    const content = document.getElementById("id_content");
+    const aiFlag = document.getElementById("ai-generated");
+    const form = document.getElementById("charter-form");
+
+    function setLoading(loading) {
+        button.disabled = loading;
+        button.setAttribute("aria-busy", loading ? "true" : "false");
+        button.querySelector(".spinner").hidden = !loading;
+        button.querySelector(".btn-text").textContent = loading ? "Rédaction en cours…" : "✦ Rédiger avec l'IA";
+    }
+
+    button.addEventListener("click", async () => {
+        if (content.value.trim() && !window.confirm("Remplacer le texte actuel de la charte par une nouvelle proposition ?")) {
+            return;
+        }
+        setLoading(true);
+        status.textContent = "Rédaction en cours…";
+        const body = new FormData();
+        body.append("group_type", document.getElementById("id_group_type").value);
+        body.append("key_rules", document.getElementById("id_key_rules").value);
+        try {
+            const response = await fetch(button.dataset.url, {
+                method: "POST",
+                headers: { "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value },
+                body,
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erreur serveur.");
+            content.value = data.content;
+            aiFlag.value = "1";
+            content.classList.remove("ai-filled");
+            void content.offsetWidth;
+            content.classList.add("ai-filled");
+            const source = data.source === "llm" ? "Proposition rédigée par l'IA" : "Proposition issue du modèle (IA indisponible)";
+            status.textContent = `${source} en ${(data.latency_ms / 1000).toFixed(1).replace(".", ",")} s. Relisez et modifiez avant d'enregistrer.`;
+            content.focus();
+        } catch (error) {
+            status.textContent = `Rédaction impossible : ${error.message}`;
+        } finally {
+            setLoading(false);
+        }
+    });
+})();
+</script>
+{% endblock %}

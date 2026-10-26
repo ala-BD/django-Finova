@@ -13,6 +13,12 @@ urlpatterns = [
     path("<int:gid>/delete/", views.GroupArchiveView.as_view(), name="delete"),
     path("<int:gid>/leave/", views.GroupLeaveView.as_view(), name="leave"),
     path("<int:gid>/invite/", views.InvitationCreateView.as_view(), name="invite"),
+    path("<int:gid>/charter/", views.CharterView.as_view(), name="charter"),
+    path("<int:gid>/charter/edit/", views.CharterEditView.as_view(), name="charter_edit"),
+    path("<int:gid>/charter/generate/", views.CharterGenerateView.as_view(), name="charter_generate"),
+    path("<int:gid>/equity/", views.EquityCoachView.as_view(), name="equity"),
+    path("<int:gid>/equity/ask/", views.EquityCoachAskView.as_view(), name="equity_ask"),
+    path("<int:gid>/equity/apply/", views.ApplySplitRuleView.as_view(), name="equity_apply"),
     path(
         "<int:gid>/members/<int:mid>/edit/",
         views.MembershipUpdateView.as_view(),

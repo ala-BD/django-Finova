@@ -1505,3 +1505,128 @@ textarea.input {
 @media (prefers-reduced-motion: reduce) {
     .ai-filled { animation: none; }
 }
+
+/* ── M1 · Charte du groupe et coach d'équité (Ala) ── */
+.charter {
+    max-width: 46rem;
+    line-height: 1.6;
+}
+
+.charter h3 {
+    margin-top: 0;
+    color: var(--accent);
+}
+
+.charter ol {
+    padding-left: 1.4rem;
+}
+
+.charter li {
+    margin: 0.45rem 0;
+}
+
+.charter li::marker {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.charter-keys {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+}
+
+.charter-empty {
+    max-width: 40rem;
+    text-align: center;
+    padding: 2rem 1.5rem;
+}
+
+.charter-editor textarea {
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+.charter-ai {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin: 0 0 1rem;
+}
+
+.charter-ai p {
+    margin: 0;
+}
+
+.coach {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.coach h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+}
+
+.coach-members .input {
+    padding: 0.4rem 0.55rem;
+}
+
+.coach-weight {
+    max-width: 6rem;
+}
+
+.coach-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.btn-sm {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.85rem;
+}
+
+.coach-more {
+    color: var(--error);
+    font-weight: 600;
+}
+
+.coach-less {
+    color: var(--ok);
+    font-weight: 600;
+}
+
+.coach-summary {
+    margin: 0.75rem 0 0;
+    font-weight: 600;
+}
+
+.coach-ask {
+    max-width: 52rem;
+}
+
+.coach-answer {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    background: var(--bg);
+    border: 1px solid var(--border);
+}
+
+.coach-reco {
+    margin-top: 0;
+    font-size: 1.05rem;
+}
+
+@media (max-width: 52rem) {
+    .coach {
+        grid-template-columns: 1fr;
+    }
+}

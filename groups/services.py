@@ -309,3 +309,252 @@ def generate_group_from_prompt(prompt: str, user=None, max_retries: int = 2) -> 
         f"Le LLM n'a pas produit un JSON valide après {max_retries + 1} tentatives. "
         f"Dernière erreur : {last_error}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Partie IA — charte du groupe (M1)
+# ---------------------------------------------------------------------------
+
+CHARTER_BASE_RULES = {
+    "coloc": [
+        "Chaque dépense commune (loyer, courses, factures) est saisie dans Finova le jour même.",
+        "Les factures récurrentes (loyer, internet, électricité) sont enregistrées comme dépenses récurrentes.",
+        "Les courses partagées sont gardées sur un ticket : chacun réclame ce qu'il consomme.",
+        "On prévient le groupe avant toute dépense commune importante.",
+    ],
+    "voyage": [
+        "Les réservations (transport, hébergement) sont saisies dès qu'elles sont payées.",
+        "Les dépenses du quotidien sont ajoutées le soir même, avec le ticket si possible.",
+        "Chacun peut avancer de l'argent : les comptes sont soldés au retour, en un minimum de virements.",
+        "Les dépenses personnelles (souvenirs, extras) ne passent pas par le groupe.",
+    ],
+    "evenement": [
+        "Le budget de l'événement est fixé et annoncé avant les premiers achats.",
+        "Chaque achat est validé par l'organisateur puis saisi avec son justificatif.",
+        "Les comptes sont soldés dans la semaine qui suit l'événement.",
+    ],
+    "association": [
+        "Toute dépense est rattachée à une catégorie et accompagnée d'un justificatif.",
+        "Les dépenses importantes sont validées par un administrateur avant d'être engagées.",
+        "Un point sur les soldes est fait à chaque réunion.",
+    ],
+    "famille": [
+        "Les dépenses communes (courses, sorties, cadeaux) sont saisies au fur et à mesure.",
+        "La participation de chacun tient compte de ses moyens grâce aux poids.",
+        "On en parle simplement en cas de désaccord sur une dépense.",
+    ],
+    "autre": [
+        "Chaque dépense commune est saisie rapidement dans Finova.",
+        "Les comptes sont soldés régulièrement, en un minimum de virements.",
+    ],
+}
+COMMON_RULES = [
+    "Un remboursement n'est compté qu'une fois confirmé par la personne qui le reçoit.",
+    "Personne ne quitte le groupe tant que son solde n'est pas à zéro.",
+    "On reste bienveillant : un oubli se règle par un simple rappel.",
+]
+CHARTER_MAX_LENGTH = 4000
+
+
+def _key_rules_list(key_rules: str) -> list[str]:
+    parts = _re.split(r"[\n;•]+|\.\s+", key_rules or "")
+    rules = []
+    for part in parts:
+        part = part.strip(" -.*").strip()
+        if part:
+            rules.append(part[0].upper() + part[1:] + ("" if part.endswith((".", "!", "?")) else "."))
+    return rules[:6]
+
+
+def charter_template(group, group_type: str, key_rules: str) -> str:
+    """Charte rédigée sans IA (repli) : règles clés de l'admin, règles du type, règles communes."""
+    split_rule = Group.SplitRule(group.default_split_rule).label.lower()
+    rules = (
+        _key_rules_list(key_rules)
+        + CHARTER_BASE_RULES.get(group_type, CHARTER_BASE_RULES["autre"])
+        + [f"Les dépenses sont partagées selon la règle « {split_rule} » ; elle peut être changée pour une dépense précise."]
+        + COMMON_RULES
+    )
+    lines = [f"### Charte de « {group.name} »", ""]
+    lines += [f"{index}. {rule}" for index, rule in enumerate(rules, 1)]
+    return "\n".join(lines)
+
+
+def _clean_charter(text: str) -> str:
+    text = _re.sub(r"^```(?:markdown|md)?\s*|\s*```$", "", (text or "").strip())
+    return text.strip()
+
+
+def generate_charter(group, group_type: str, key_rules: str, user=None) -> dict:
+    """Charte proposée par le LLM, validée (non vide, bornée, avec une liste de règles),
+    sinon modèle de texte. Retourne {content, source: llm|template, latency_ms}. Ne lève jamais."""
+    import time
+
+    from core.ai import LLMError, call_llm
+
+    from .models import GroupCharter
+
+    started = time.perf_counter()
+    type_label = dict(GroupCharter.GroupType.choices).get(group_type, "Autre")
+    prompt = (
+        "Rédige en français la charte (règles de vie) d'un groupe de partage de dépenses.\n"
+        f"Nom : {group.name}\nType : {type_label}\nDevise : {group.currency}\n"
+        f"Règle de partage actuelle : {Group.SplitRule(group.default_split_rule).label}\n"
+        f"Nombre de membres : {group.active_memberships().count()}\n"
+        f"Règles clés voulues par l'administrateur (à intégrer fidèlement) : {key_rules or 'aucune'}\n"
+        "Format : Markdown, un titre « ### Charte de « nom » », puis 6 à 9 règles numérotées, courtes, concrètes "
+        "et bienveillantes (saisie des dépenses, remboursements et délais, confirmation par le bénéficiaire, "
+        "désaccords). Aucun préambule ni conclusion, pas de montant inventé, 1 800 caractères maximum."
+    )
+    try:
+        content = _clean_charter(call_llm("m1.charter", prompt, module="groups", user=user))
+        if not content or len(content) > CHARTER_MAX_LENGTH or not _re.search(r"^\s*(\d+[.)]|[-*])\s", content, _re.M):
+            raise LLMError("Charte générée invalide (vide, trop longue ou sans liste de règles).")
+        source = "llm"
+    except LLMError:
+        content = charter_template(group, group_type, key_rules)
+        source = "template"
+    return {"content": content, "source": source, "latency_ms": int((time.perf_counter() - started) * 1000)}
+
+
+# ---------------------------------------------------------------------------
+# Partie IA — coach d'équité (M1) : chiffres et recommandation calculés, l'IA explique
+# ---------------------------------------------------------------------------
+
+COACH_MAX_MEMBERS = 12
+
+
+def equity_comparison(amount, members: list[dict]) -> dict:
+    """Parts de chacun selon la règle égale et selon le poids, au millime (somme exacte)."""
+    amount = Decimal(str(amount))
+    keys = list(range(len(members)))
+    equal = split_equally(amount, keys)
+    weighted = split_by_weight(amount, {k: Decimal(str(members[k]["weight"])) for k in keys})
+    rows = [
+        {
+            "name": members[k]["name"],
+            "weight": _decimal_text(members[k]["weight"]),
+            "equal": str(equal[k]),
+            "by_weight": str(weighted[k]),
+            "difference": str(weighted[k] - equal[k]),
+        }
+        for k in keys
+    ]
+    return {"amount": str(amount), "rows": rows}
+
+
+def _decimal_text(value) -> str:
+    text = f"{Decimal(str(value)):f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def recommend_rule(members: list[dict]) -> dict:
+    """Recommandation déterministe et explicable : profils identiques → règle égale ;
+    écart de moyens entre membres → règle par poids."""
+    weights = [Decimal(str(m["weight"])) for m in members]
+    ratio = max(weights) / min(weights)
+    if ratio == 1:
+        return {
+            "rule": Group.SplitRule.EQUAL.value,
+            "label": Group.SplitRule.EQUAL.label,
+            "reasons": ["tous les membres ont le même poids : la règle égale donne déjà des parts justes"],
+        }
+    return {
+        "rule": Group.SplitRule.BY_WEIGHT.value,
+        "label": Group.SplitRule.BY_WEIGHT.label,
+        "reasons": [
+            f"les poids vont de {_decimal_text(min(weights))} à {_decimal_text(max(weights))} "
+            f"(le plus élevé vaut {_decimal_text(ratio.quantize(Decimal('0.1')))} fois le plus bas)",
+            "avec la règle égale, les membres au poids le plus faible paieraient autant que les autres "
+            "malgré des moyens plus réduits",
+        ],
+    }
+
+
+def human_amount(amount) -> str:
+    """50.000 → « 50 », 17.500 → « 17,5 » : « 50.000 » se lirait « cinquante mille » en français."""
+    text = f"{Decimal(str(amount)).quantize(Decimal('0.001')):f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text.replace(".", ",")
+
+
+def coach_template(comparison: dict, recommendation: dict, currency: str) -> str:
+    lines = [f"**Recommandation : règle « {recommendation['label'].lower()} ».**", ""]
+    lines += [f"- Parce que {reason}." for reason in recommendation["reasons"]]
+    lines += ["", "| Membre | Poids | Égale | Par poids |", "|---|---|---|---|"]
+    lines += [
+        f"| {r['name']} | {r['weight']} | {human_amount(r['equal'])} {currency} | {human_amount(r['by_weight'])} {currency} |"
+        for r in comparison["rows"]
+    ]
+    return "\n".join(lines)
+
+
+def coach_answer(group, amount, members: list[dict], question: str = "", user=None) -> dict:
+    """Compare les deux règles, recommande, puis fait expliquer la recommandation par le LLM
+    (repli : explication par modèle de texte). Ne lève jamais d'erreur LLM."""
+    import time
+
+    from core.ai import LLMError, call_llm
+
+    started = time.perf_counter()
+    comparison = equity_comparison(amount, members)
+    recommendation = recommend_rule(members)
+    prompt = (
+        "Tu es le coach d'équité de Finova (partage de dépenses). Explique simplement, en 120 mots maximum, "
+        "la différence entre la règle égale et la règle par poids pour ce groupe, puis justifie la "
+        "recommandation déjà calculée ci-dessous. Utilise uniquement ces chiffres, n'en invente aucun, ne parle "
+        "jamais de JSON. Réponds dans la langue de la question si elle est fournie, sinon en français, en "
+        "Markdown simple (gras, puces).\n"
+        f"Montant à partager : {human_amount(comparison['amount'])} {group.currency}\n"
+        "Répartition comparée (montants déjà écrits à la française, à reprendre tels quels) :\n"
+        + "\n".join(
+            f"- {r['name']} (poids {r['weight']}) : règle égale {human_amount(r['equal'])} {group.currency}, "
+            f"par poids {human_amount(r['by_weight'])} {group.currency}"
+            for r in comparison["rows"]
+        )
+        + "\n"
+        f"Recommandation : {recommendation['label']} — raisons : {'; '.join(recommendation['reasons'])}\n"
+        f"Question du membre : {question or '(aucune)'}"
+    )
+    try:
+        text = (call_llm("m1.equity_coach", prompt, module="groups", user=user) or "").strip()
+        if not text or len(text) > 2500:
+            raise LLMError("Explication du coach invalide.")
+        source = "llm"
+    except LLMError:
+        text = coach_template(comparison, recommendation, group.currency)
+        source = "template"
+    return {
+        "comparison": comparison,
+        "recommendation": {"rule": recommendation["rule"], "label": recommendation["label"]},
+        "explanation": text,
+        "source": source,
+        "latency_ms": int((time.perf_counter() - started) * 1000),
+    }
+
+
+def parse_coach_members(raw) -> list[dict]:
+    """Scénario envoyé par le navigateur, revalidé : 1 à 12 personnes, noms bornés,
+    poids entre 0,001 et 100. Lève ValueError avec un message lisible."""
+    import json
+
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, ValueError):
+        raise ValueError("Scénario illisible.")
+    if not isinstance(data, list) or not 1 <= len(data) <= COACH_MAX_MEMBERS:
+        raise ValueError(f"Il faut entre 1 et {COACH_MAX_MEMBERS} personnes.")
+    members = []
+    for index, item in enumerate(data, 1):
+        if not isinstance(item, dict):
+            raise ValueError("Scénario illisible.")
+        name = str(item.get("name") or "").strip()[:40] or f"Personne {index}"
+        try:
+            weight = Decimal(str(item.get("weight"))).quantize(Decimal("0.001"))
+        except Exception:
+            raise ValueError(f"Poids invalide pour {name}.")
+        if not Decimal("0.001") <= weight <= Decimal("100"):
+            raise ValueError(f"Le poids de {name} doit être compris entre 0,001 et 100.")
+        members.append({"name": name, "weight": weight})
+    return members

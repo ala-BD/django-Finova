@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 
 from accounts.forms import AccessibleFormMixin
 
-from .models import Group, Invitation, Membership
+from .models import Group, GroupCharter, Invitation, Membership
 from .services import default_weight_for
 
 
@@ -120,3 +120,25 @@ class InvitationForm(AccessibleFormMixin, forms.ModelForm):
         ).exists():
             raise ValidationError("Une invitation active existe déjà pour cet e-mail.")
         return email
+
+
+class CharterForm(AccessibleFormMixin, forms.ModelForm):
+    class Meta:
+        model = GroupCharter
+        fields = ("group_type", "key_rules", "content")
+        widgets = {
+            "key_rules": forms.Textarea(attrs={
+                "rows": 2,
+                "placeholder": "ex. dépenses communes réglées à la fin du mois ; pas d'achat de plus de 50 TND sans accord",
+            }),
+            "content": forms.Textarea(attrs={"rows": 14}),
+        }
+        help_texts = {
+            "content": "Format simple : une règle par ligne, numérotée (1. …). Le gras s'écrit **ainsi**.",
+        }
+
+    def clean_content(self):
+        content = (self.cleaned_data.get("content") or "").strip()
+        if not content:
+            raise ValidationError("La charte ne peut pas être vide.")
+        return content

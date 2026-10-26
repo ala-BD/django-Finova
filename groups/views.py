@@ -9,19 +9,23 @@ from django.views import View
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
+from core.markdown import render_markdown
 from core.permissions import GroupAdminRequiredMixin, GroupMemberRequiredMixin
 
 from decimal import Decimal
 
 from .emails import send_invitation_email
-from .forms import GroupForm, InvitationForm, MembershipForm, SplitPreviewForm
-from .models import Group, Invitation, Membership
+from .forms import CharterForm, GroupForm, InvitationForm, MembershipForm, SplitPreviewForm
+from .models import Group, GroupCharter, Invitation, Membership
 from .services import (
     can_leave,
+    coach_answer,
     default_weight_for,
+    generate_charter,
     generate_group_from_prompt,
     get_member_balance,
     is_admin,
+    parse_coach_members,
     preview_split,
 )
 
@@ -421,3 +425,139 @@ def _parse_ai_suggestions(raw: str) -> dict:
             if 0 < amount <= 10_000_000:
                 budgets.append({"category": str(item["category"]).strip(), "amount": amount})
     return {"categories": categories, "budgets": budgets}
+
+
+# ---------------------------------------------------------------------------
+# Charte du groupe (IA) : lue par tous les membres, rédigée et modifiée par les admins
+# ---------------------------------------------------------------------------
+
+class CharterView(GroupMemberRequiredMixin, View):
+    template_name = "groups/charter.html"
+
+    def get(self, request, gid):
+        group = self.get_group()
+        return render(request, self.template_name, {
+            "group": group,
+            "charter": GroupCharter.objects.filter(group=group).select_related("updated_by").first(),
+            "is_group_admin": is_admin(request.user, group),
+        })
+
+
+class CharterEditView(GroupAdminRequiredMixin, View):
+    template_name = "groups/charter_form.html"
+
+    def get_charter(self):
+        return GroupCharter.objects.filter(group=self.get_group()).first()
+
+    def render_form(self, form):
+        return render(self.request, self.template_name, {"group": self.get_group(), "form": form})
+
+    def get(self, request, gid):
+        charter = self.get_charter()
+        initial = {} if charter else {"group_type": guess_group_type(self.get_group())}
+        return self.render_form(CharterForm(instance=charter, initial=initial))
+
+    def post(self, request, gid):
+        form = CharterForm(request.POST, instance=self.get_charter())
+        if not form.is_valid():
+            return self.render_form(form)
+        charter = form.save(commit=False)
+        charter.group = self.get_group()
+        charter.updated_by = request.user
+        charter.generated_by_ai = request.POST.get("ai_generated") == "1"
+        charter.save()
+        messages.success(request, "Charte enregistrée : tous les membres peuvent la consulter.")
+        return redirect("groups:charter", gid=charter.group_id)
+
+
+class CharterGenerateView(GroupAdminRequiredMixin, View):
+    """Appelé en fetch : propose une charte (LLM, ou modèle de texte en repli). Ne sauvegarde rien."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, gid):
+        group_type = request.POST.get("group_type", "autre")
+        if group_type not in GroupCharter.GroupType.values:
+            return JsonResponse({"error": "Type de groupe inconnu."}, status=400)
+        key_rules = (request.POST.get("key_rules") or "").strip()[:500]
+        result = generate_charter(self.get_group(), group_type, key_rules, user=request.user)
+        return JsonResponse(result)
+
+
+def guess_group_type(group) -> str:
+    text = f"{group.name} {group.description}".casefold()
+    for group_type, words in {
+        "coloc": ("coloc", "appart", "loyer", "maison"),
+        "voyage": ("voyage", "vacances", "trip", "séjour", "sejour", "week-end"),
+        "evenement": ("anniversaire", "mariage", "fête", "fete", "soirée", "soiree", "événement", "evenement"),
+        "association": ("asso", "club", "équipe", "equipe"),
+        "famille": ("famille", "parents", "cousins"),
+    }.items():
+        if any(word in text for word in words):
+            return group_type
+    return "autre"
+
+
+# ---------------------------------------------------------------------------
+# Coach d'équité interactif : compare les règles, recommande, l'IA explique
+# ---------------------------------------------------------------------------
+
+class EquityCoachView(GroupMemberRequiredMixin, View):
+    template_name = "groups/equity_coach.html"
+
+    def get(self, request, gid):
+        group = self.get_group()
+        members = [
+            {"name": m.user.get_full_name() or m.user.username, "weight": float(m.weight)}
+            for m in group.active_memberships()
+        ]
+        return render(request, self.template_name, {
+            "group": group,
+            "is_group_admin": is_admin(request.user, group),
+            "coach_config": {
+                "members": members,
+                "amount": 90,
+                "currency": group.currency,
+                "current_rule": group.default_split_rule,
+                "profiles": [
+                    {"label": "Étudiant·e", "weight": 1},
+                    {"label": "Actif·ve", "weight": 2},
+                    {"label": "Actif·ve senior", "weight": 3},
+                ],
+            },
+        })
+
+
+class EquityCoachAskView(GroupMemberRequiredMixin, View):
+    http_method_names = ["post"]
+
+    def post(self, request, gid):
+        try:
+            amount = Decimal(str(request.POST.get("amount", "")).replace(",", "."))
+        except Exception:
+            amount = Decimal("0")
+        if not Decimal("0.001") <= amount <= Decimal("10000000"):
+            return JsonResponse({"error": "Le montant doit être compris entre 0,001 et 10 000 000."}, status=400)
+        try:
+            members = parse_coach_members(request.POST.get("members", ""))
+        except ValueError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
+        question = (request.POST.get("question") or "").strip()[:500]
+        result = coach_answer(self.get_group(), amount, members, question, user=request.user)
+        result["explanation_html"] = render_markdown(result["explanation"])
+        return JsonResponse(result)
+
+
+class ApplySplitRuleView(GroupAdminRequiredMixin, View):
+    http_method_names = ["post"]
+
+    def post(self, request, gid):
+        group = self.get_group()
+        rule = request.POST.get("rule")
+        if rule not in Group.SplitRule.values:
+            messages.error(request, "Règle de partage inconnue.")
+        else:
+            group.default_split_rule = rule
+            group.save(update_fields=["default_split_rule", "updated_at"])
+            messages.success(request, f"Règle de partage du groupe : « {group.get_default_split_rule_display().lower()} ».")
+        return redirect("groups:equity", gid=group.pk)

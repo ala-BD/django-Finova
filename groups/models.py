@@ -210,3 +210,51 @@ class Invitation(models.Model):
         if self.status == self.Status.PENDING and self.is_expired():
             self.status = self.Status.EXPIRED
             self.save(update_fields=["status"])
+
+
+class GroupCharter(models.Model):
+    """Charte du groupe (règles de vie) : rédigée par un admin, avec l'aide de l'IA, lue par tous."""
+
+    class GroupType(models.TextChoices):
+        COLOC = "coloc", "Colocation"
+        TRIP = "voyage", "Voyage"
+        EVENT = "evenement", "Événement"
+        ASSOCIATION = "association", "Association / club"
+        FAMILY = "famille", "Famille"
+        OTHER = "autre", "Autre"
+
+    group = models.OneToOneField(
+        Group,
+        on_delete=models.CASCADE,
+        related_name="charter",
+        verbose_name="groupe",
+    )
+    group_type = models.CharField(
+        "type de groupe",
+        max_length=20,
+        choices=GroupType.choices,
+        default=GroupType.OTHER,
+    )
+    key_rules = models.CharField(
+        "règles clés",
+        max_length=500,
+        blank=True,
+        help_text="Ce qui compte pour vous, en quelques mots.",
+    )
+    content = models.TextField("charte", max_length=6000)
+    generated_by_ai = models.BooleanField("rédigée avec l'IA", default=False)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="+",
+        verbose_name="modifiée par",
+    )
+    updated_at = models.DateTimeField("modifiée le", auto_now=True)
+
+    class Meta:
+        verbose_name = "charte de groupe"
+        verbose_name_plural = "chartes de groupe"
+
+    def __str__(self):
+        return f"Charte de {self.group}"

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Coach d'équité · {{ group.name }} · Finova{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="back"><a href="{% url 'groups:detail' group.pk %}">← {{ group.name }}</a></p>
+        <h1><span class="ai-badge">✦ IA</span> Coach d'équité</h1>
+        <p class="muted">Comparez la règle égale et la règle par poids (selon les moyens de chacun), puis demandez au coach laquelle convient à votre groupe.
+            Règle actuelle : <strong>{{ group.get_default_split_rule_display|lower }}</strong>.</p>
+    </div>
+</div>
+
+<div class="coach">
+    <section class="card coach-scenario" aria-labelledby="scenario-title">
+        <h2 id="scenario-title">Le scénario</h2>
+        <div class="field">
+            <label for="coach-amount">Montant d'une dépense à partager ({{ group.currency }})</label>
+            <input type="number" id="coach-amount" class="input" min="0.001" step="0.001" inputmode="decimal">
+        </div>
+        <table class="data-table coach-members">
+            <caption class="visually-hidden">Personnes du scénario et leur poids</caption>
+            <thead><tr><th scope="col">Personne</th><th scope="col">Poids</th><th scope="col"><span class="visually-hidden">Retirer</span></th></tr></thead>
+            <tbody id="coach-members"></tbody>
+        </table>
+        <p class="coach-add" role="group" aria-label="Ajouter une personne">
+            <span class="muted">Ajouter :</span>
+            <span id="coach-presets"></span>
+        </p>
+        <p><button type="button" class="btn btn-inline" id="coach-reset">Revenir aux membres du groupe</button></p>
+        <p class="help">Poids : étudiant·e 1, actif·ve 2, actif·ve senior 3 (ou toute valeur entre 0,001 et 100).</p>
+    </section>
+
+    <section class="card coach-compare" aria-labelledby="compare-title">
+        <h2 id="compare-title">Qui paie combien ?</h2>
+        <table class="data-table">
+            <caption class="visually-hidden">Parts selon la règle égale et selon la règle par poids</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Personne</th>
+                    <th scope="col" class="num">Règle égale</th>
+                    <th scope="col" class="num">Par poids</th>
+                    <th scope="col" class="num">Écart</th>
+                </tr>
+            </thead>
+            <tbody id="coach-table"></tbody>
+            <tfoot><tr><th scope="row">Total</th><td class="num" id="coach-total-equal"></td><td class="num" id="coach-total-weight"></td><td></td></tr></tfoot>
+        </table>
+        <p id="coach-summary" class="coach-summary" aria-live="polite"></p>
+    </section>
+</div>
+
+<section class="card coach-ask" aria-labelledby="ask-title">
+    <h2 id="ask-title">Demander au coach</h2>
+    <form id="coach-form" method="post" action="{% url 'groups:equity_ask' group.pk %}">
+        {% csrf_token %}
+        <div class="field">
+            <label for="coach-question">Votre question (facultatif)</label>
+            <textarea id="coach-question" class="input" rows="2" maxlength="500"
+                      placeholder="ex. On est trois : une étudiante et deux actifs. Quelle règle est la plus adaptée ?"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-inline btn-ai" id="coach-submit">
+            <span class="btn-text">✦ Demander au coach</span>
+            <span class="spinner" hidden aria-hidden="true"></span>
+        </button>
+    </form>
+    <p id="coach-status" class="muted" role="status" aria-live="polite"></p>
+    <div id="coach-answer" class="coach-answer" hidden>
+        <p class="coach-reco">Recommandation : <strong id="coach-reco-label"></strong></p>
+        <div class="asst-md" id="coach-explanation"></div>
+        {% if is_group_admin %}
+            <form method="post" action="{% url 'groups:equity_apply' group.pk %}" id="coach-apply" hidden>
+                {% csrf_token %}
+                <input type="hidden" name="rule" id="coach-apply-rule">
+                <button type="submit" class="btn btn-primary btn-inline" id="coach-apply-btn">Appliquer cette règle au groupe</button>
+            </form>
+        {% endif %}
+    </div>
+</section>
+{{ coach_config|json_script:"coach-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/equity_coach.js' %}"></script>
+{% endblock %}
