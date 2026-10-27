@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# override=True : après une modification de .env, le processus relancé par runserver
+# relit les nouvelles valeurs au lieu de garder celles héritées. En production
+# (Render), il n'y a pas de fichier .env : seules les variables de la plateforme comptent.
 load_dotenv(BASE_DIR / ".env", override=True)
 
 SECRET_KEY = os.environ.get(
@@ -115,6 +118,7 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
 # Sans délai, un serveur SMTP injoignable bloquerait la requête (invitation, rappel) indéfiniment
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Finova <noreply@finova.app>")
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")          # Google Gemini (fournisseur principal)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")        # Groq, utilisé si Gemini ne répond pas

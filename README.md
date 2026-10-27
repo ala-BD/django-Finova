@@ -16,7 +16,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 copy .env.example .env   # Windows : ou cp .env.example .env
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py seed_demo        # données de démonstration (mot de passe : Finova-demo-2026)
+python manage.py createsuperuser  # facultatif, pour l'admin Django
 python manage.py runserver
 ```
 
@@ -35,16 +36,20 @@ Ouvrir http://127.0.0.1:8000/
 | `automation` | M6 Automatisation et assistant | Wassim |
 | `core` | Client LLM, permissions, utilitaires | transversal |
 
-Les **modèles métier** (sauf `accounts.User` et `core.AIRequestLog`) sont volontairement vides : Linda anime le gel du modèle en S1. Jusque-là, personne ne modifie un modèle d'un autre module.
+Le **modèle de données est figé** (gel S1, intégration : Linda) : tous les modèles des diagrammes de classes existent avec leurs migrations initiales. Détail et conventions dans [docs/M4_budgets.md](docs/M4_budgets.md#1-gel-du-modèle-de-données-commun). Toute modification d'un modèle passe par une demande à l'équipe et une pull request.
 
 ## Contrats entre modules (`services.py`)
 
 - `groups.services.is_member` / `is_admin`
-- `expenses.services.get_group_expenses`
+- `expenses.services.get_group_expenses(group, period=(début, fin), category)` → QuerySet
 - `settlements.services.compute_balances`
-- `budgets.services.get_budget_status`
+- `budgets.services.get_budget_status(group, category, month)` → dict (`percent`, `level`, `effective_limit`…)
 - `automation.services.notify`
 - `core.ai.call_llm`
+
+## Documentation des modules
+
+- [M4 · Budgets et simulateur](docs/M4_budgets.md) — Linda (règles, IA, métriques, démo, questions d'oral)
 
 ## Branches Git
 

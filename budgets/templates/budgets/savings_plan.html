@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static budget_tags %}
+{% block title %}Plan d'économie · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<h1>Plan d'économie</h1>
+<p class="lead">Fixez un objectif : Finova répartit l'effort entre les catégories, sans toucher aux dépenses fixes (loyer, abonnements) et sans couper plus de 30 % d'une catégorie.</p>
+
+<div class="split">
+    <form method="get" class="form-card" novalidate>
+        {% if form.non_field_errors %}
+            <div class="form-errors" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+        {% endif %}
+        {% include "includes/form_field.html" with field=form.goal %}
+        {% include "includes/form_field.html" with field=form.months %}
+        <button type="submit" class="btn btn-primary">Calculer le plan</button>
+    </form>
+
+    <section class="result-card" aria-labelledby="plan-summary-title" aria-live="polite">
+        <h2 id="plan-summary-title">Résultat</h2>
+        {% if plan %}
+            {% if plan.feasible %}
+                <p class="big-figure">{{ plan.monthly_target|money:group.currency }} / mois</p>
+                <p>à économiser pendant {{ plan.months }} mois pour atteindre {{ plan.goal|money:group.currency }}.</p>
+                <p class="status status-ok"><span aria-hidden="true">✓</span> Objectif réaliste</p>
+            {% else %}
+                <p class="big-figure">{{ plan.max_monthly_saving|money:group.currency }} / mois</p>
+                <p>C'est le maximum raisonnable : il faudrait {{ plan.monthly_target|money:group.currency }} par mois pour tenir {{ plan.months }} mois.</p>
+                <p class="status status-warning"><span aria-hidden="true">⚠</span>
+                    {% if plan.months_needed %}Objectif atteignable en {{ plan.months_needed }} mois{% else %}Pas assez d'historique pour économiser{% endif %}
+                </p>
+            {% endif %}
+        {% else %}
+            <p class="muted">Indiquez un montant et un délai, par exemple 300 {{ group.currency }} en 3 mois.</p>
+        {% endif %}
+    </section>
+</div>
+
+{% if plan %}
+    <section class="plan-section" aria-labelledby="plan-title">
+        <h2 id="plan-title">Répartition par catégorie</h2>
+        {% if plan.categories %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <caption class="visually-hidden">Réduction proposée pour chaque catégorie</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Catégorie</th>
+                            <th scope="col">Type de dépense</th>
+                            <th scope="col" class="num">Moyenne / mois</th>
+                            <th scope="col" class="num">À économiser</th>
+                            <th scope="col" class="num">Nouvelle cible</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in plan.categories %}
+                            <tr>
+                                <th scope="row">{{ row.name }}</th>
+                                <td><span class="tag tag-{{ row.flexibility|slugify }}">{{ row.flexibility }}</span></td>
+                                <td class="num">{{ row.average|money }}</td>
+                                <td class="num">{% if row.reduction %}<strong>− {{ row.reduction|money }}</strong> ({{ row.percent|percent }}){% else %}—{% endif %}</td>
+                                <td class="num">{{ row.new_target|money }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row" colspan="3">Total économisé par mois</th>
+                            <td class="num"><strong>{{ plan.monthly_saving|money:group.currency }}</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <p class="help">
+                « Fixe » : la dépense varie très peu d'un mois à l'autre, elle n'est pas réduite.
+                Plus une dépense est irrégulière, plus elle porte une part importante de l'effort.
+                Calcul fait sur les 6 derniers mois.
+            </p>
+
+            {% if is_group_admin %}
+                <form method="post" action="{% url 'budgets:plan_apply' group.pk %}" class="plan-apply">
+                    {% csrf_token %}
+                    <input type="hidden" name="goal" value="{{ plan.goal }}">
+                    <input type="hidden" name="months" value="{{ plan.months }}">
+                    <button type="submit" class="btn btn-secondary">Appliquer ce plan aux budgets de {{ next_month|date:"F Y" }}</button>
+                    <span class="help">Crée ou met à jour un budget par catégorie avec la nouvelle cible.</span>
+                </form>
+            {% endif %}
+        {% else %}
+            <div class="empty-state"><p>Pas encore de dépenses passées dans ce groupe : impossible de calculer un plan.</p></div>
+        {% endif %}
+    </section>
+{% endif %}
+{% endblock %}

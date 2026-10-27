@@ -1,0 +1,5 @@
+<div class="report-actions">
+    <a class="btn btn-ghost" href="{% url 'budgets:report_pdf' group.pk %}?month={{ month|date:'Y-m' }}" download>
+        <span aria-hidden="true">⬇</span> Télécharger le rapport PDF
+    </a>
+</div>

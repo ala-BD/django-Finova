@@ -1,0 +1,100 @@
+{
+  "model_version": "m4-overrun-1.0",
+  "chosen_model": "gradient_boosting",
+  "cv_f1": {
+    "logistic_regression": 0.812,
+    "gradient_boosting": 0.845
+  },
+  "threshold": 0.4,
+  "dataset": {
+    "groups": 60,
+    "train_groups": 45,
+    "test_groups": 15,
+    "train_rows": 26730,
+    "test_rows": 8910,
+    "overrun_rate_test": 0.386,
+    "note": "Colocations simulées (ml/m4_generate_demo.py), annoncées comme données générées."
+  },
+  "test": {
+    "model": {
+      "precision": 0.807,
+      "recall": 0.859,
+      "f1": 0.832,
+      "accuracy": 0.866,
+      "confusion_matrix": {
+        "tn": 4765,
+        "fp": 707,
+        "fn": 485,
+        "tp": 2953
+      },
+      "roc_auc": 0.947
+    },
+    "rule_spent_80": {
+      "precision": 0.511,
+      "recall": 0.49,
+      "f1": 0.5,
+      "accuracy": 0.622,
+      "confusion_matrix": {
+        "tn": 3861,
+        "fp": 1611,
+        "fn": 1754,
+        "tp": 1684
+      }
+    },
+    "rule_forecast_over_limit": {
+      "precision": 0.82,
+      "recall": 0.772,
+      "f1": 0.795,
+      "accuracy": 0.847,
+      "confusion_matrix": {
+        "tn": 4891,
+        "fp": 581,
+        "fn": 785,
+        "tp": 2653
+      },
+      "roc_auc": 0.874
+    }
+  },
+  "by_period": {
+    "debut": {
+      "model_f1": 0.752,
+      "rule_forecast_f1": 0.689
+    },
+    "milieu": {
+      "model_f1": 0.851,
+      "rule_forecast_f1": 0.812
+    },
+    "fin": {
+      "model_f1": 0.898,
+      "rule_forecast_f1": 0.881
+    }
+  },
+  "feature_importance": {
+    "day_fraction": 0.003,
+    "spent_ratio": 0.1,
+    "forecast_ratio": 0.71,
+    "pace_vs_usual": 0.01,
+    "history_cv": 0.03,
+    "history_over_rate": 0.037,
+    "group_pace_vs_usual": 0.109
+  },
+  "interval": {
+    "quantiles": {
+      "debut": [
+        0.667,
+        1.4384
+      ],
+      "milieu": [
+        0.7369,
+        1.3326
+      ],
+      "fin": [
+        0.827,
+        1.2054
+      ]
+    },
+    "coverage_test": 0.807,
+    "target": 0.8
+  },
+  "latency_ms": 0.246
+}

@@ -25,6 +25,9 @@
                                 <a href="{% url 'groups:list' %}">Groupes</a>
                             </li>
                             <li>
+                                <a href="{% url 'budgets:overview' %}" {% if request.resolver_match.app_name == 'budgets' %}aria-current="page"{% endif %}>Budgets</a>
+                            </li>
+                            <li>
                                 <a href="{% url 'analytics:dashboard' %}" {% if request.resolver_match.app_name == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>
                             </li>
                             <li>

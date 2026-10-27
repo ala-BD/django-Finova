@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if object %}Modifier{% else %}Nouvelle{% endif %} catégorie · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<article class="form-card">
+    <h1>{% if object %}Modifier la catégorie « {{ object.name }} »{% else %}Nouvelle catégorie{% endif %}</h1>
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.name %}
+        {% include "includes/form_field.html" with field=form.color %}
+        {% include "includes/form_field.html" with field=form.icon %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a href="{% url 'budgets:categories' group.pk %}">Annuler</a>
+        </div>
+    </form>
+</article>
+{% endblock %}

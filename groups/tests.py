@@ -469,7 +469,7 @@ class AIGroupViewTests(GroupFixturesMixin, TestCase):
         self.assertTrue(Membership.objects.filter(group=group, user=self.admin, role=Membership.Role.ADMIN).exists())
         names = list(Category.objects.filter(group=group).order_by("pk").values_list("name", flat=True))
         self.assertEqual(names[:2], ["Transport", "Hébergement"])  # doublon « transport » ignoré
-        self.assertTrue(all(len(n) <= 60 for n in names))  # nom trop long tronqué
+        self.assertTrue(all(len(n) <= 50 for n in names))  # nom trop long tronqué
 
     def test_tampered_suggestions_never_break_group_creation(self):
         self.client.force_login(self.admin)

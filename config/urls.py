@@ -13,7 +13,8 @@ urlpatterns = [
     path("invitations/", include("groups.invitation_urls")),
     path("groups/<int:gid>/expenses/", include("expenses.urls")),
     path("groups/<int:gid>/", include("settlements.urls")),
-    path("budgets/", include("budgets.urls")),
+    # M4 : budgets.urls porte ses propres préfixes (budgets/ et groups/<gid>/budgets|categories/)
+    path("", include("budgets.urls")),
     path("analytics/", include("analytics.urls")),
     path("", include("automation.urls")),
 ]

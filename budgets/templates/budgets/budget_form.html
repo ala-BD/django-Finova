@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if object %}Modifier{% else %}Nouveau{% endif %} budget · {{ group.name }} · Finova{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/budgets.css' %}">{% endblock %}
+{% block content %}
+{% include "budgets/_group_nav.html" %}
+
+<article class="form-card">
+    <h1>{% if object %}Modifier le budget « {{ object.category.name }} »{% else %}Nouveau budget{% endif %}</h1>
+
+    {% if form.non_field_errors %}
+        <div class="form-errors" role="alert">
+            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" novalidate id="budget-form">
+        {% csrf_token %}
+        {% include "includes/form_field.html" with field=form.category %}
+        {% include "includes/form_field.html" with field=form.month %}
+        {% include "includes/form_field.html" with field=form.limit_amount %}
+
+        <div class="ai-helper">
+            <button type="button" class="btn btn-ghost" id="recommend-button"
+                    data-url="{% url 'budgets:recommend' group.pk %}"
+                    aria-controls="recommend-output" hidden>
+                <span class="tag tag-ai" aria-hidden="true">IA</span> Suggérer une limite
+            </button>
+            <div id="recommend-output" class="ai-output" aria-live="polite" aria-busy="false"></div>
+        </div>
+
+        <div class="field field-checkbox">
+            {{ form.carry_over }}
+            <label for="{{ form.carry_over.id_for_label }}">{{ form.carry_over.label }}</label>
+            <p class="help" id="{{ form.carry_over.id_for_label }}-help">{{ form.carry_over.help_text }}</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a href="{% url 'budgets:list' group.pk %}">Annuler</a>
+        </div>
+    </form>
+</article>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/budgets.js' %}"></script>{% endblock %}

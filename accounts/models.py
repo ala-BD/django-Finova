@@ -1,9 +1,12 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
 class User(AbstractUser):
-    """Utilisateur Finova. À figer dès la première migration (Linda / auth)."""
+    """Utilisateur Finova (AUTH_USER_MODEL = accounts.User), figé dès la première migration."""
 
     class IncomeProfile(models.TextChoices):
         STUDENT = "student", "Étudiant"
@@ -18,6 +21,15 @@ class User(AbstractUser):
         choices=IncomeProfile.choices,
         default=IncomeProfile.ACTIVE,
     )
+    monthly_income = models.DecimalField(
+        "revenu mensuel",
+        max_digits=12,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Facultatif. Sert à proposer un poids pour la règle d'équité (M1).",
+    )
 
     class Meta:
         verbose_name = "utilisateur"
@@ -25,3 +37,13 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.get_full_name() or self.username
+
+    def get_groups(self):
+        """Groupes actifs (non archivés) dont l'utilisateur est membre actif."""
+        from groups.models import Group
+
+        return Group.objects.filter(
+            memberships__user=self,
+            memberships__is_active=True,
+            is_archived=False,
+        ).distinct()

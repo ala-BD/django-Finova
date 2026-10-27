@@ -23,8 +23,8 @@ def get_group_expenses(group, period=None, category=None) -> QuerySet[Expense]:
     Exposée pour M3 (soldes), M4 (budgets), M5 (analytics) et M6 (automatisation).
 
     :param group: Instance ou identifiant du groupe
-    :param period: 'YYYY-MM', objet date/datetime (mois), ou mot-clé de l'assistant M6 :
-                   'week' (7 derniers jours), 'month' (mois en cours), 'year', 'all'
+    :param period: 'YYYY-MM', objet date/datetime (mois), tuple (début, fin) de dates incluses (M4),
+                   ou mot-clé de l'assistant M6 : 'week' (7 derniers jours), 'month' (mois en cours), 'year', 'all'
     :param category: Instance, identifiant, ou nom de catégorie (insensible à la casse)
     :return: QuerySet de Expense
     """
@@ -40,7 +40,10 @@ def get_group_expenses(group, period=None, category=None) -> QuerySet[Expense]:
 
     if period:
         today = timezone.localdate()
-        if period == "week":
+        if isinstance(period, (tuple, list)):
+            start, end = period
+            qs = qs.filter(expense_date__range=(start, end))
+        elif period == "week":
             qs = qs.filter(expense_date__gte=today - timedelta(days=7))
         elif period == "month":
             qs = qs.filter(expense_date__year=today.year, expense_date__month=today.month)

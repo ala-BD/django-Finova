@@ -388,10 +388,12 @@ def _create_budgets_if_available(group, group_data: dict, user) -> None:
                     cat = Category.objects.create(group=group, name=cat_name)
                 amount = budget_map.get(cat_name)
                 if Budget is not None and amount:
+                    # Champs du modèle M4 de Linda : un budget par catégorie et par mois
                     Budget.objects.get_or_create(
                         group=group,
                         category=cat,
-                        defaults={"amount": amount},
+                        month=timezone.localdate().replace(day=1),
+                        defaults={"limit_amount": amount},
                     )
         except Exception:
             pass  # Ne jamais bloquer la création du groupe à cause de M4
@@ -411,7 +413,7 @@ def _parse_ai_suggestions(raw: str) -> dict:
         return empty
     categories = []
     for name in data.get("categories", []) if isinstance(data.get("categories"), list) else []:
-        name = str(name).strip()[:60]
+        name = str(name).strip()[:50]  # Category.name : 50 caractères (M4)
         if name and name.casefold() not in {c.casefold() for c in categories}:
             categories.append(name)
     categories = categories[:10]
