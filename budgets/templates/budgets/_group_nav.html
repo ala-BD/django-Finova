@@ -1,4 +1,5 @@
 <p class="breadcrumb"><a href="{% url 'budgets:overview' %}">Mes budgets</a> <span aria-hidden="true">›</span> {{ group.name }}</p>
+{% include "includes/group_nav.html" with active="budgets" %}
 <nav class="subnav" aria-label="Budgets du groupe {{ group.name }}">
     <ul>
         <li><a href="{% url 'budgets:list' group.pk %}" {% if active_tab == 'budgets' %}aria-current="page"{% endif %}>Budgets</a></li>

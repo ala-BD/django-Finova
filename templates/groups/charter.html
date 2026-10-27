@@ -23,6 +23,8 @@
     {% endif %}
 </div>
 
+{% include "includes/group_nav.html" with active="charter" %}
+
 {% if charter %}
     <article class="card charter">
         {{ charter.content|markdown }}

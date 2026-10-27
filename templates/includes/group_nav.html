@@ -1,0 +1,12 @@
+{# Menu des modules d'un groupe. Paramètre : active = overview | expenses | balances | settlements | budgets | recurring | charter #}
+<nav class="group-nav" aria-label="Rubriques du groupe {{ group.name }}">
+    <ul>
+        <li><a href="{% url 'groups:detail' group.pk %}" {% if active == 'overview' %}aria-current="page"{% endif %}>Vue d'ensemble</a></li>
+        <li><a href="{% url 'expenses:list' gid=group.pk %}" {% if active == 'expenses' %}aria-current="page"{% endif %}>Dépenses</a></li>
+        <li><a href="{% url 'settlements:balances' group.pk %}" {% if active == 'balances' %}aria-current="page"{% endif %}>Soldes</a></li>
+        <li><a href="{% url 'settlements:list' group.pk %}" {% if active == 'settlements' %}aria-current="page"{% endif %}>Remboursements</a></li>
+        <li><a href="{% url 'budgets:list' group.pk %}" {% if active == 'budgets' %}aria-current="page"{% endif %}>Budgets</a></li>
+        <li><a href="{% url 'automation:recurring_list' gid=group.pk %}" {% if active == 'recurring' %}aria-current="page"{% endif %}>Dépenses récurrentes</a></li>
+        <li><a href="{% url 'groups:charter' group.pk %}" {% if active == 'charter' %}aria-current="page"{% endif %}>Charte</a></li>
+    </ul>
+</nav>

@@ -1,32 +1,30 @@
 {% extends "base.html" %}
 {% block title %}{{ group.name }} · Finova{% endblock %}
 {% block content %}
+<p class="breadcrumb"><a href="{% url 'groups:list' %}">Groupes</a> <span aria-hidden="true">›</span> {{ group.name }}</p>
 <div class="page-header">
     <div>
         <h1>{{ group.name }}</h1>
-        <p>{{ group.get_currency_display }} · règle {{ group.get_default_split_rule_display|lower }}</p>
+        <p>{{ group.get_currency_display }}, partage {{ group.get_default_split_rule_display|lower }}</p>
     </div>
     <p class="actions">
+        <a class="btn btn-primary btn-inline" href="{% url 'expenses:create' gid=group.pk %}">Ajouter une dépense</a>
         {% if is_group_admin %}
-            <a class="btn btn-inline" href="{% url 'groups:edit' group.pk %}">Modifier</a>
-            <a class="btn btn-inline" href="{% url 'groups:invite' group.pk %}">Inviter</a>
-            <a class="btn btn-inline btn-danger" href="{% url 'groups:delete' group.pk %}">Archiver</a>
+            <a class="btn btn-secondary btn-inline" href="{% url 'groups:invite' group.pk %}">Inviter</a>
+            <a class="btn btn-secondary btn-inline" href="{% url 'groups:edit' group.pk %}">Modifier</a>
         {% endif %}
-        <a class="btn btn-inline" href="{% url 'groups:charter' group.pk %}">Charte</a>
-        <a class="btn btn-inline" href="{% url 'expenses:list' gid=group.pk %}">Dépenses</a>
-        <a class="btn btn-inline" href="{% url 'settlements:balances' group.pk %}">Soldes</a>
-        <a class="btn btn-inline" href="{% url 'settlements:list' group.pk %}">Remboursements</a>
-        <a class="btn btn-inline" href="{% url 'automation:recurring_list' gid=group.pk %}">Dépenses récurrentes</a>
-        <a class="btn btn-inline" href="{% url 'groups:leave' group.pk %}">Quitter</a>
     </p>
 </div>
 
+{% include "includes/group_nav.html" with active="overview" %}
+
 {% if group.description %}
-    <p>{{ group.description }}</p>
+    <p class="lead">{{ group.description }}</p>
 {% endif %}
 
-<section>
-    <h2>Membres</h2>
+<section aria-labelledby="members-title">
+    <h2 id="members-title">Membres</h2>
+    <div class="table-wrap">
     <table class="data-table">
         <caption class="visually-hidden">Membres du groupe et soldes</caption>
         <thead>
@@ -34,38 +32,47 @@
                 <th scope="col">Membre</th>
                 <th scope="col">Rôle</th>
                 <th scope="col">Poids (profil)</th>
-                <th scope="col">Solde</th>
-                {% if is_group_admin %}<th scope="col">Actions</th>{% endif %}
+                <th scope="col" class="num">Solde</th>
+                {% if is_group_admin %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}
             </tr>
         </thead>
         <tbody>
             {% for member in members %}
-                <tr>
-                    <td>{{ member.user.get_full_name|default:member.user.username }}</td>
+                <tr{% if member.user == user %} class="row-me"{% endif %}>
+                    <td>
+                        <span class="member-cell">
+                            <span class="avatar avatar-sm" aria-hidden="true">{{ member.user.get_short_name|default:member.user.username|slice:":1" }}</span>
+                            {{ member.user.get_full_name|default:member.user.username }}{% if member.user == user %} <span class="muted">(vous)</span>{% endif %}
+                        </span>
+                    </td>
                     <td>{{ member.get_role_display }}</td>
                     <td>
                         {{ member.weight }}
                         <span class="muted">({{ member.user.get_income_profile_display }} → {{ member.suggested_weight }})</span>
                     </td>
-                    <td>{{ member.balance }} {{ group.currency }}</td>
+                    <td class="num {% if member.balance > 0 %}balance-positive{% elif member.balance < 0 %}balance-negative{% endif %}">
+                        {{ member.balance }} {{ group.currency }}
+                    </td>
                     {% if is_group_admin %}
                         <td>
-                            <a href="{% url 'groups:member_edit' group.pk member.pk %}">Éditer</a>
+                            <a href="{% url 'groups:member_edit' group.pk member.pk %}">Éditer<span class="visually-hidden"> {{ member.user.get_full_name|default:member.user.username }}</span></a>
                         </td>
                     {% endif %}
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
+    <p class="help">Solde positif : le groupe doit de l'argent à ce membre. Négatif : ce membre doit de l'argent au groupe.</p>
 </section>
 
 {% if is_group_admin %}
-<section>
-    <h2>Invitations en attente</h2>
+<section aria-labelledby="invites-title">
+    <h2 id="invites-title">Invitations en attente</h2>
     {% if pending_invitations %}
-        <ul>
+        <ul class="plain-list">
             {% for invite in pending_invitations %}
-                <li>{{ invite.email }} — expire le {{ invite.expires_at|date:"d/m/Y" }}</li>
+                <li>{{ invite.email }} <span class="muted">expire le {{ invite.expires_at|date:"d/m/Y" }}</span></li>
             {% endfor %}
         </ul>
     {% else %}
@@ -74,14 +81,15 @@
 </section>
 {% endif %}
 
-<section class="equity">
-    <h2>Profils d'équité</h2>
-    <p><a class="btn btn-inline btn-ai" href="{% url 'groups:equity' group.pk %}">✦ Coach d'équité : quelle règle choisir ?</a></p>
+<section class="equity" aria-labelledby="equity-title">
+    <h2 id="equity-title">Profils d'équité</h2>
     <p>{{ preview.note }}</p>
+    <p><a class="btn btn-inline btn-ai" href="{% url 'groups:equity' group.pk %}">✦ Coach d'équité : quelle règle choisir ?</a></p>
     <form class="preview-form" method="get">
         {% include "includes/form_field.html" with field=preview_form.amount %}
         <button type="submit" class="btn btn-primary btn-inline">Simuler la répartition</button>
     </form>
+    <div class="table-wrap">
     <table class="data-table">
         <caption>
             Répartition de {{ preview.amount }} {{ group.currency }}
@@ -91,7 +99,7 @@
             <tr>
                 <th scope="col">Membre</th>
                 <th scope="col">Poids</th>
-                <th scope="col">Part</th>
+                <th scope="col" class="num">Part</th>
             </tr>
         </thead>
         <tbody>
@@ -99,10 +107,21 @@
                 <tr>
                     <td>{{ row.membership.user.get_full_name|default:row.membership.user.username }}</td>
                     <td>{{ row.weight }}</td>
-                    <td>{{ row.share }} {{ group.currency }}</td>
+                    <td class="num">{{ row.share }} {{ group.currency }}</td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
+</section>
+
+<section class="danger-zone" aria-labelledby="danger-title">
+    <h2 id="danger-title">Quitter ou archiver</h2>
+    <p class="actions">
+        <a class="btn btn-danger btn-inline" href="{% url 'groups:leave' group.pk %}">Quitter le groupe</a>
+        {% if is_group_admin %}
+            <a class="btn btn-danger btn-inline" href="{% url 'groups:delete' group.pk %}">Archiver le groupe</a>
+        {% endif %}
+    </p>
 </section>
 {% endblock %}

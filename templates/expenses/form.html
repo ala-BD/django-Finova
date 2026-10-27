@@ -9,7 +9,7 @@
         <div>
             <nav class="breadcrumb" aria-label="Fil d'Ariane">
                 <a href="{% url 'home' %}">Accueil</a> &rsaquo;
-                <span>{{ group.name }}</span> &rsaquo;
+                <a href="{% url 'groups:detail' group.pk %}">{{ group.name }}</a> &rsaquo;
                 <a href="{% url 'expenses:list' gid=group.id %}">Dépenses</a> &rsaquo;
                 <span aria-current="page">{{ title }}</span>
             </nav>

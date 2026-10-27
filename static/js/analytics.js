@@ -24,7 +24,7 @@
     }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+    Chart.defaults.font.family = '"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
     Chart.defaults.color = INK;
     Chart.defaults.animation = reducedMotion ? false : Chart.defaults.animation;
     Chart.defaults.plugins.tooltip.callbacks.label = (ctx) => ` ${formatMoney(ctx.parsed.y ?? ctx.parsed)}`;

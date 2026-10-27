@@ -121,6 +121,13 @@ def dashboard_data(records, categories_order) -> dict:
     grand_total = total(records)
     count = len(records)
     color_slot = {name: index for index, name in enumerate(categories_order)}
+    # Catégories propres à un groupe (« Loyer », « Courses »…) : emplacements restants, par ordre
+    # alphabétique, pour qu'elles ne tombent pas toutes sur la même couleur.
+    unknown = sorted({name for name, _ in by_category} - set(color_slot))
+    used = {color_slot[name] for name, _ in by_category if name in color_slot}
+    free = [slot for slot in range(len(categories_order)) if slot not in used] or list(range(len(categories_order)))
+    for index, name in enumerate(unknown):
+        color_slot[name] = free[index % len(free)]
     return {
         "total": grand_total,
         "count": count,
@@ -134,7 +141,7 @@ def dashboard_data(records, categories_order) -> dict:
             "category": {
                 "labels": [name for name, _ in by_category],
                 "values": [float(value) for _, value in by_category],
-                "slots": [color_slot.get(name, len(categories_order) - 1) for name, _ in by_category],
+                "slots": [color_slot[name] for name, _ in by_category],
             },
             "month": {
                 "labels": [month_label(key) for key, _ in by_month],

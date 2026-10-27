@@ -4,7 +4,7 @@
     --warning: #854d0e;
     --warning-bg: #fefce8;
     --warning-border: #fde047;
-    --track: #e7e5e4;
+    --track: var(--border);
 }
 
 .lead {
@@ -82,7 +82,7 @@
 }
 
 .btn-ghost:hover {
-    background: #f0fdfa;
+    background: var(--accent-soft);
 }
 
 .btn-danger {

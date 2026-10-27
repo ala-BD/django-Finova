@@ -6,19 +6,30 @@
   <a href="{% url 'groups:detail' group.pk %}">{{ group.name }}</a> &rsaquo;
   <span aria-current="page">Dépenses récurrentes</span>
 </nav>
-<h1>Dépenses récurrentes</h1>
-<p><a href="{% url 'automation:recurring_create' gid=group.pk %}">Ajouter une dépense récurrente</a></p>
+<div class="page-header">
+  <div>
+    <h1>Dépenses récurrentes</h1>
+    <p>Loyer, abonnements, factures : Finova les ajoute tout seul à chaque échéance.</p>
+  </div>
+  <p class="actions">
+    <a class="btn btn-primary btn-inline" href="{% url 'automation:recurring_create' gid=group.pk %}">Ajouter une dépense récurrente</a>
+  </p>
+</div>
+{% include "includes/group_nav.html" with active="recurring" %}
 {% if recurring %}
-<ul>
+<ul class="row-list">
   {% for item in recurring %}
     <li>
-      <a href="{% url 'automation:recurring_detail' gid=group.pk pk=item.pk %}">{{ item.title }}</a>
-      — {{ item.amount }} — {{ item.get_frequency_display }}
+      <a class="row-list-title" href="{% url 'automation:recurring_detail' gid=group.pk pk=item.pk %}">{{ item.title }}</a>
+      <span class="muted">{{ item.get_frequency_display }}</span>
       <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
+      <span class="amount">{{ item.amount }} {{ group.currency }}</span>
     </li>
   {% endfor %}
 </ul>
 {% else %}
-<p>Aucune dépense récurrente pour ce groupe.</p>
+<div class="empty-state">
+  <p>Aucune dépense récurrente pour ce groupe.</p>
+</div>
 {% endif %}
 {% endblock %}

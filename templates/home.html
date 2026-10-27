@@ -1,7 +1,114 @@
 {% extends "base.html" %}
 {% block title %}Accueil · Finova{% endblock %}
 {% block content %}
-<h1>Finova</h1>
-<p>Application web de gestion et de partage de dépenses.</p>
-<p><a class="btn btn-primary btn-inline" href="{% url 'groups:list' %}">Voir mes groupes</a></p>
+{% if user.is_authenticated %}
+    <div class="page-header">
+        <div>
+            <h1>Bonjour {{ user.get_short_name|default:user.username }}</h1>
+            <p>Voici où vous en êtes dans chacun de vos groupes.</p>
+        </div>
+        <p class="actions">
+            <a class="btn btn-secondary btn-inline" href="{% url 'groups:ai_create' %}">✦ Créer avec l'IA</a>
+            <a class="btn btn-primary btn-inline" href="{% url 'groups:create' %}">Nouveau groupe</a>
+        </p>
+    </div>
+
+    {% if tiles %}
+        <dl class="stat-row">
+            <div class="stat">
+                <dt>On vous doit</dt>
+                {% for row in totals %}
+                    {% if row.owed or forloop.first and not totals_owed %}
+                        <dd class="amount-credit">{{ row.owed|floatformat:"3g" }} {{ row.currency }}</dd>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="stat">
+                <dt>Vous devez</dt>
+                {% for row in totals %}
+                    {% if row.owe or forloop.first and not totals_owe %}
+                        <dd class="amount-debit">{{ row.owe|floatformat:"3g" }} {{ row.currency }}</dd>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="stat">
+                <dt>Groupes actifs</dt>
+                <dd>{{ tiles|length }}</dd>
+            </div>
+        </dl>
+
+        <h2 class="visually-hidden">Mes groupes</h2>
+        <ul class="group-grid">
+            {% for tile in tiles %}
+                <li class="group-tile">
+                    <h3><a href="{% url 'groups:detail' tile.group.pk %}">{{ tile.group.name }}</a></h3>
+                    <p class="group-tile-meta">
+                        {{ tile.members }} membre{{ tile.members|pluralize }}{% if tile.is_admin %}, vous êtes admin{% endif %}
+                    </p>
+                    <p class="group-tile-balance">
+                        {% if tile.balance > 0 %}
+                            <span>On vous doit</span>
+                            <span class="amount amount-credit">{{ tile.magnitude|floatformat:"3g" }} {{ tile.group.currency }}</span>
+                        {% elif tile.balance < 0 %}
+                            <span>Vous devez</span>
+                            <span class="amount amount-debit">{{ tile.magnitude|floatformat:"3g" }} {{ tile.group.currency }}</span>
+                        {% else %}
+                            <span>Vous êtes à l'équilibre</span>
+                            <span class="amount">0 {{ tile.group.currency }}</span>
+                        {% endif %}
+                    </p>
+                    <p class="group-tile-links">
+                        <a href="{% url 'expenses:create' gid=tile.group.pk %}">Ajouter une dépense</a>
+                        <a href="{% url 'settlements:balances' tile.group.pk %}">Soldes</a>
+                        <a href="{% url 'budgets:list' tile.group.pk %}">Budgets</a>
+                    </p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="card">
+            <h2>Vous n'avez encore aucun groupe</h2>
+            <p>Créez celui de votre coloc ou de votre prochain voyage, puis invitez les autres par email.</p>
+            <p class="actions">
+                <a class="btn btn-primary btn-inline" href="{% url 'groups:create' %}">Créer un groupe</a>
+            </p>
+        </div>
+    {% endif %}
+{% else %}
+    <section class="welcome">
+        <div>
+            <h1>Les comptes de la coloc, sans disputes.</h1>
+            <p class="welcome-lead">
+                Notez chaque dépense, Finova calcule qui doit quoi à qui, au millime près,
+                et propose le moins de virements possible pour tout solder.
+            </p>
+            <p class="actions">
+                <a class="btn btn-primary btn-inline" href="{% url 'accounts:register' %}">Créer un compte</a>
+                <a class="btn btn-secondary btn-inline" href="{% url 'accounts:login' %}">J'ai déjà un compte</a>
+            </p>
+        </div>
+        <ul class="ledger-sample" aria-label="Exemple de carnet">
+            <li><span class="ledger-sample-title">Coloc Lafayette, octobre</span></li>
+            <li><span>Courses Carrefour, payé par Ala</span><span class="amount">84,500 TND</span></li>
+            <li><span>Facture STEG, payée par Linda</span><span class="amount">112,400 TND</span></li>
+            <li><span>Yahya doit à Linda</span><span class="amount amount-debit">37,500 TND</span></li>
+            <li><span>Imem doit à Ala</span><span class="amount amount-debit">28,170 TND</span></li>
+        </ul>
+    </section>
+
+    <ul class="promise-list">
+        <li>
+            <h2>Partage juste</h2>
+            <p>À parts égales, selon les revenus ou ligne par ligne du ticket : chacun paie sa vraie part.</p>
+        </li>
+        <li>
+            <h2>Remboursements simples</h2>
+            <p>Un solde clair par personne et des échéanciers quand il faut étaler.</p>
+        </li>
+        <li>
+            <h2>Budgets qui préviennent</h2>
+            <p>Une alerte à 80 % et une prévision de fin de mois avant qu'il soit trop tard.</p>
+        </li>
+    </ul>
+{% endif %}
 {% endblock %}

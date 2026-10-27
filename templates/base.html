@@ -4,37 +4,49 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#15509e">
     <title>{% block title %}Finova{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+    <link rel="icon" href="{% static 'img/finova-mark.svg' %}" type="image/svg+xml">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <a class="skip-link" href="#contenu">Aller au contenu</a>
 
-    <header>
+    <header class="site-header">
+        <div class="site-header-inner">
         {% block header %}
-            <p class="brand"><a href="{% url 'home' %}">Finova</a></p>
+            <p class="brand">
+                <a href="{% url 'home' %}">
+                    {% include "includes/brand_mark.svg" %}
+                    Finova
+                </a>
+            </p>
             {% block nav %}
-                <nav aria-label="Navigation principale">
+                {% with app=request.resolver_match.app_name url=request.resolver_match.url_name %}
+                <nav class="main-nav" aria-label="Navigation principale">
                     <ul>
                         <li>
-                            <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Accueil</a>
+                            <a href="{% url 'home' %}" {% if url == 'home' %}aria-current="page"{% endif %}>Accueil</a>
                         </li>
                         {% if user.is_authenticated %}
                             <li>
-                                <a href="{% url 'groups:list' %}">Groupes</a>
+                                <a href="{% url 'groups:list' %}" {% if app == 'groups' or app == 'expenses' or app == 'settlements' %}aria-current="page"{% endif %}>Groupes</a>
                             </li>
                             <li>
-                                <a href="{% url 'budgets:overview' %}" {% if request.resolver_match.app_name == 'budgets' %}aria-current="page"{% endif %}>Budgets</a>
+                                <a href="{% url 'budgets:overview' %}" {% if app == 'budgets' %}aria-current="page"{% endif %}>Budgets</a>
                             </li>
                             <li>
-                                <a href="{% url 'analytics:dashboard' %}" {% if request.resolver_match.app_name == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>
+                                <a href="{% url 'analytics:dashboard' %}" {% if app == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>
                             </li>
                             <li>
-                                <a href="{% url 'automation:assistant' %}">Assistant</a>
+                                <a href="{% url 'automation:assistant' %}" {% if app == 'automation' and url == 'assistant' %}aria-current="page"{% endif %}>Assistant</a>
                             </li>
                             <li>
-                                <a href="{% url 'automation:notifications' %}">
+                                <a href="{% url 'automation:notifications' %}" {% if app == 'automation' and url == 'notifications' %}aria-current="page"{% endif %}>
                                     Notifications
                                     {% if unread_notifications %}
                                         <span class="badge" aria-live="polite">
@@ -45,6 +57,7 @@
                                 </a>
                             </li>
                             <li class="nav-user">
+                                <span class="avatar" aria-hidden="true">{{ user.get_short_name|default:user.username|slice:":1" }}</span>
                                 <span class="visually-hidden">Connecté en tant que</span>
                                 {{ user.get_short_name|default:user.username }}
                             </li>
@@ -56,16 +69,18 @@
                             </li>
                         {% else %}
                             <li>
-                                <a href="{% url 'accounts:login' %}" {% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'login' %}aria-current="page"{% endif %}>Connexion</a>
+                                <a href="{% url 'accounts:login' %}" {% if app == 'accounts' and url == 'login' %}aria-current="page"{% endif %}>Connexion</a>
                             </li>
                             <li>
-                                <a href="{% url 'accounts:register' %}" {% if request.resolver_match.url_name == 'register' %}aria-current="page"{% endif %}>Inscription</a>
+                                <a href="{% url 'accounts:register' %}" {% if url == 'register' %}aria-current="page"{% endif %}>Inscription</a>
                             </li>
                         {% endif %}
                     </ul>
                 </nav>
+                {% endwith %}
             {% endblock %}
         {% endblock %}
+        </div>
     </header>
 
     <main id="contenu" tabindex="-1">
@@ -75,10 +90,13 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer>
+    <footer class="site-footer">
+        <div class="site-footer-inner">
         {% block footer %}
-            <p>Finova — gestion et partage de dépenses</p>
+            <p>Finova · les comptes de la coloc, sans disputes.</p>
+            <p>Montants en millimes, arrondis au plus juste.</p>
         {% endblock %}
+        </div>
     </footer>
 
     <script src="{% static 'js/app.js' %}"></script>

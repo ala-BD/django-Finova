@@ -9,7 +9,7 @@
         <div>
             <nav class="breadcrumb" aria-label="Fil d'Ariane">
                 <a href="{% url 'home' %}">Accueil</a> &rsaquo;
-                <span>{{ group.name }}</span> &rsaquo;
+                <a href="{% url 'groups:detail' group.pk %}">{{ group.name }}</a> &rsaquo;
                 <span aria-current="page">Dépenses</span>
             </nav>
             <h1>Dépenses du groupe : {{ group.name }}</h1>
@@ -20,6 +20,8 @@
             </a>
         </div>
     </header>
+
+    {% include "includes/group_nav.html" with active="expenses" %}
 
     <!-- Résumé financier du groupe -->
     <section class="summary-cards" aria-label="Statistiques des dépenses">

@@ -1,8 +1,6 @@
-<nav class="sub-nav" aria-label="Soldes et remboursements">
-    <ul>
-        <li><a href="{% url 'groups:detail' group.pk %}">← {{ group.name }}</a></li>
-        <li><a href="{% url 'settlements:balances' group.pk %}" {% if request.resolver_match.url_name == 'balances' %}aria-current="page"{% endif %}>Soldes</a></li>
-        <li><a href="{% url 'settlements:list' group.pk %}" {% if request.resolver_match.url_name == 'list' %}aria-current="page"{% endif %}>Remboursements</a></li>
-        <li><a href="{% url 'settlements:create' group.pk %}" {% if request.resolver_match.url_name == 'create' %}aria-current="page"{% endif %}>Déclarer un remboursement</a></li>
-    </ul>
-</nav>
+<p class="breadcrumb"><a href="{% url 'groups:list' %}">Groupes</a> <span aria-hidden="true">›</span> <a href="{% url 'groups:detail' group.pk %}">{{ group.name }}</a></p>
+{% if request.resolver_match.url_name == 'balances' %}
+    {% include "includes/group_nav.html" with active="balances" %}
+{% else %}
+    {% include "includes/group_nav.html" with active="settlements" %}
+{% endif %}
