@@ -118,7 +118,6 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
 # Sans délai, un serveur SMTP injoignable bloquerait la requête (invitation, rappel) indéfiniment
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "15"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Finova <noreply@finova.app>")
-EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")          # Google Gemini (fournisseur principal)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")        # Groq, utilisé si Gemini ne répond pas

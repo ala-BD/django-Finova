@@ -2,10 +2,20 @@ services:
   - type: web
     name: finova
     runtime: python
-    # migrate à chaque déploiement : sinon la base PostgreSQL reste vide et toutes les pages plantent
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate --no-input
+    plan: free
+    branch: integration
+    # migrate à chaque déploiement : sinon la base PostgreSQL reste vide et toutes les pages plantent.
+    # Données de démo (comptes demo_* et linda/yahya…) si LOAD_DEMO_DATA=true : le plan gratuit n'a pas
+    # de shell, et les deux commandes ne font rien si les données existent déjà.
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python manage.py collectstatic --no-input &&
+      python manage.py migrate --no-input &&
+      if [ "$LOAD_DEMO_DATA" = "true" ]; then python manage.py m3_demo && python manage.py seed_demo; fi
     startCommand: gunicorn config.wsgi:application
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.prod
       - key: SECRET_KEY
@@ -18,12 +28,27 @@ services:
         fromDatabase:
           name: finova-db
           property: connectionString
+      - key: LOAD_DEMO_DATA
+        value: "true"
       - key: LLM_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: EXCHANGE_RATE_API_URL
         value: https://open.er-api.com/v6/latest/{base}
+      # Invitations par email (Gmail : mot de passe d'application)
+      - key: EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
 
 databases:
   - name: finova-db
