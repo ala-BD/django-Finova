@@ -1,0 +1,241 @@
+title,category
+pizza,alimentation
+pizza du vendredi,alimentation
+dejeuner,alimentation
+dejeuner d'equipe,alimentation
+diner au restaurant,alimentation
+resto du soir,alimentation
+burger,alimentation
+cafe,alimentation
+cafe et croissants,alimentation
+petit dejeuner,alimentation
+courses de la semaine,alimentation
+courses aziza,alimentation
+courses magasin general,alimentation
+marche central,alimentation
+fruits et legumes,alimentation
+boulangerie,alimentation
+pain et lait,alimentation
+patisserie,alimentation
+glaces,alimentation
+sandwichs plage,alimentation
+couscous du dimanche,alimentation
+lablabi,alimentation
+brik et jus,alimentation
+eau minerale,alimentation
+livraison glovo,alimentation
+kfc,alimentation
+the et gateaux,alimentation
+boucherie,alimentation
+poisson au port,alimentation
+epicerie du quartier,alimentation
+taxi,transport
+taxi aeroport,transport
+louage tunis sousse,transport
+bus,transport
+metro leger,transport
+essence,transport
+plein d'essence,transport
+carburant voiture,transport
+parking,transport
+peage autoroute,transport
+billet d'avion,transport
+billets de train,transport
+ticket bus,transport
+bolt,transport
+location voiture,transport
+vidange voiture,transport
+reparation pneu,transport
+lavage voiture,transport
+ferry djerba,transport
+navette aeroport,transport
+train banlieue,transport
+moto reparation,transport
+uber,transport
+billet tgm,transport
+covoiturage,transport
+assurance voiture,transport
+taxi collectif,transport
+amende stationnement,transport
+gasoil,transport
+recharge velo,transport
+loyer,logement
+loyer octobre,logement
+loyer du mois,logement
+loyer appartement,logement
+caution appartement,logement
+facture steg,logement
+electricite,logement
+facture eau,logement
+sonede,logement
+gaz bouteille,logement
+charges de l'immeuble,logement
+syndic,logement
+plombier,logement
+electricien,logement
+reparation chauffe eau,logement
+peinture salon,logement
+meubles,logement
+canape,logement
+produits menagers,logement
+femme de menage,logement
+serrurier,logement
+rideaux,logement
+ampoules,logement
+climatiseur,logement
+lit et matelas,logement
+frigo,logement
+machine a laver,logement
+demenagement,logement
+location chalet,logement
+airbnb,logement
+cinema,loisirs
+concert,loisirs
+soiree,loisirs
+bowling,loisirs
+billard,loisirs
+match de foot,loisirs
+place stade,loisirs
+parc d'attractions,loisirs
+musee,loisirs
+theatre,loisirs
+festival,loisirs
+excursion desert,loisirs
+plongee,loisirs
+jeux video,loisirs
+escape game,loisirs
+karting,loisirs
+plage privee,loisirs
+quad,loisirs
+sortie en mer,loisirs
+anniversaire,loisirs
+spectacle,loisirs
+hammam,loisirs
+piscine,loisirs
+randonnee,loisirs
+billets de concert,loisirs
+carte cadeau jeux,loisirs
+club de sport entree,loisirs
+camping,loisirs
+visite guidee,loisirs
+fete,loisirs
+pharmacie,sante
+medicaments,sante
+doliprane,sante
+medecin,sante
+consultation,sante
+dentiste,sante
+analyses,sante
+radio,sante
+kine,sante
+ophtalmo,sante
+lunettes,sante
+lentilles,sante
+vaccin,sante
+hopital,sante
+clinique,sante
+urgences,sante
+sirop,sante
+pansements,sante
+mutuelle,sante
+psychologue,sante
+vitamines,sante
+creme solaire pharmacie,sante
+masques,sante
+test covid,sante
+infirmier,sante
+orthophoniste,sante
+dermatologue,sante
+gynecologue,sante
+pediatre,sante
+ordonnance,sante
+vetements,shopping
+chaussures,shopping
+jean,shopping
+robe,shopping
+tshirt,shopping
+zara,shopping
+h&m,shopping
+nike,shopping
+sac,shopping
+montre,shopping
+parfum,shopping
+maquillage,shopping
+coiffeur,shopping
+cadeau,shopping
+cadeau anniversaire,shopping
+souvenirs,shopping
+telephone neuf,shopping
+ecouteurs,shopping
+chargeur,shopping
+ordinateur,shopping
+livres,shopping
+fournitures scolaires,shopping
+jouets,shopping
+lunettes de soleil,shopping
+bijoux,shopping
+valise,shopping
+maillot de bain,shopping
+decoration,shopping
+plantes,shopping
+amazon,shopping
+internet,factures
+facture internet,factures
+abonnement fibre,factures
+forfait mobile,factures
+recharge telephone,factures
+recharge ooredoo,factures
+orange,factures
+tunisie telecom,factures
+netflix,loisirs
+spotify,loisirs
+abonnement salle de sport,factures
+youtube premium,loisirs
+icloud,factures
+deezer,loisirs
+abonnement presse,factures
+assurance habitation,logement
+abonnement transport mensuel,transport
+canal plus,factures
+facture telephone,factures
+disney plus,loisirs
+office 365,factures
+prime video,loisirs
+nom de domaine,factures
+hebergement site,factures
+chatgpt,factures
+abonnement club,factures
+forfait internet 4g,factures
+box adsl,factures
+abonnement mobile famille,factures
+frais de compte telecom,factures
+divers,autre
+retrait,autre
+retrait dab,autre
+frais bancaires,autre
+virement,autre
+don,autre
+pourboire,autre
+amende,autre
+timbre fiscal,autre
+photocopies,autre
+impression,autre
+cotisation association,autre
+frais de dossier,autre
+poste colis,autre
+envoi colis,autre
+pressing,autre
+cle double,autre
+frais administratifs,autre
+legalisation,autre
+inscription,autre
+cadeau collectif collegue,autre
+imprevu,autre
+remboursement avance,autre
+participation commune,autre
+caisse commune,autre
+quete,autre
+loterie,autre
+frais de change,autre
+commission,autre
+autre depense,autre

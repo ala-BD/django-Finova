@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -7,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from budgets.models import Category
+from core.ai import LLMError
 from groups.models import Group, Membership
 from .models import Expense, ExpenseItem, ExpenseShare, ItemClaim
 from .services import get_group_expenses
@@ -324,8 +326,9 @@ class ExpenseViewTests(TestCase):
         self.assertIn("confidence", data)
         self.assertGreaterEqual(data["confidence"], 0.0)
 
-    def test_ajax_nlp_extract_view(self):
-        """L'endpoint AJAX NLP extrait les données de dépense en langage naturel."""
+    @patch("expenses.nlp.call_llm", side_effect=LLMError("indisponible"))
+    def test_ajax_nlp_extract_view(self, _):
+        """L'endpoint AJAX NLP extrait les données de dépense en langage naturel (repli local sans LLM)."""
         url = reverse("expenses:nlp_extract", kwargs={"gid": self.group.id})
         payload = {"phrase": "J'ai payé 45 dinars le resto hier avec Sami"}
         response = self.client.post(url, payload)

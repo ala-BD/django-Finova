@@ -14,6 +14,10 @@ from .models import Expense, ExpenseItem
 class ExpenseForm(AccessibleFormMixin, forms.ModelForm):
     """Formulaire accessible de création et d'édition de dépense."""
 
+    # Rempli par l'IA quand la catégorie suggérée n'existe pas encore dans le groupe :
+    # elle est créée à l'enregistrement (uniquement l'un des 8 noms connus du classifieur).
+    new_category_name = forms.CharField(required=False, max_length=60, widget=forms.HiddenInput)
+
     class Meta:
         model = Expense
         fields = [
@@ -70,7 +74,25 @@ class ExpenseForm(AccessibleFormMixin, forms.ModelForm):
         payer = cleaned_data.get("payer")
         if payer and self.group and payer.group_id != self.group.id:
             self.add_error("payer", _("Le payeur sélectionné n'appartient pas à ce groupe."))
+
+        new_name = (cleaned_data.get("new_category_name") or "").strip()
+        cleaned_data["new_category_name"] = ""
+        if new_name and not cleaned_data.get("category") and self.group is not None:
+            from .ml import display_name, label_from_name
+
+            label = label_from_name(new_name)
+            if label is None:
+                self.add_error("category", _("Catégorie suggérée inconnue : choisissez-en une dans la liste."))
+            else:
+                cleaned_data["new_category_name"] = display_name(label)
         return cleaned_data
+
+    def save(self, commit=True):
+        new_name = self.cleaned_data.get("new_category_name")
+        if new_name and self.instance.category_id is None:
+            category = Category.objects.filter(group=self.group, name__iexact=new_name).first()
+            self.instance.category = category or Category.objects.create(group=self.group, name=new_name)
+        return super().save(commit=commit)
 
 
 class ExpenseItemForm(AccessibleFormMixin, forms.ModelForm):

@@ -278,62 +278,60 @@ class ExpenseCategorizeView(ExpenseGroupBaseMixin, View):
     """
 
     def get(self, request, gid):
-        title = request.GET.get("title", "").strip()
-        if not title:
-            return JsonResponse({"category_id": None, "category_name": "", "confidence": 0.0})
+        from .services import predict_category
 
-        from .ml import predict_category_for_group
-
-        group = self.get_group()
-        category, confidence = predict_category_for_group(title, group=group)
-
-        return JsonResponse({
-            "category_id": category.id if category else None,
-            "category_name": category.name if category else "",
-            "confidence": confidence,
-        })
+        title = request.GET.get("title", "").strip()[:200]
+        if len(title) < 2:
+            return JsonResponse({"category_id": None, "category_name": "", "confidence": 0.0,
+                                 "confident": False, "exists": False, "label": ""})
+        return JsonResponse(predict_category(title, group=self.get_group()))
 
 
 class ExpenseNLPExtractView(ExpenseGroupBaseMixin, View):
     """
     IA (2) : Saisie en langage naturel (Module M2 - Yahya).
-    Reçoit une phrase utilisateur, appelle call_llm (avec repli local garanti),
+    Reçoit une phrase utilisateur, appelle call_llm (JSON strict validé, repli local par règles),
     et renvoie les champs structurés pour pré-remplir le formulaire.
     """
 
     def post(self, request, gid):
+        from .ml import display_name, match_group_category
+        from .nlp import parse_expense
+
         phrase = request.POST.get("phrase", "").strip()
         if not phrase:
-            return JsonResponse({"error": _("Veuillez saisir une phrase décrivant la dépense.")}, status=400)
-
-        from core.ai import call_llm
-        from .ml import predict_category_for_group
+            return JsonResponse({"success": False, "error": _("Veuillez saisir une phrase décrivant la dépense.")}, status=400)
+        if len(phrase) > 500:
+            return JsonResponse({"success": False, "error": _("Phrase trop longue (500 caractères maximum).")}, status=400)
 
         group = self.get_group()
-        extracted = call_llm(
-            feature="nlp_expense",
-            prompt=f"Extrais les informations de dépense de cette phrase: '{phrase}'. Réponds en JSON avec: title, amount, currency, expense_date, category, participants.",
-            schema={"type": "object"},
-            module="expenses",
-            user=request.user,
-        )
+        memberships = group.memberships.filter(is_active=True).select_related("user")
+        members = [(m.id, [n for n in (m.user.first_name, m.user.last_name, m.user.username) if n])
+                   for m in memberships]
+        result = parse_expense(phrase, members, user=request.user)
+        if not result["title"] and not result["amount"]:
+            return JsonResponse({
+                "success": False,
+                "error": _("Je n'ai trouvé ni montant ni objet dans cette phrase. "
+                           "Reformulez (ex : « 45 dinars resto hier ») ou remplissez le formulaire."),
+            }, status=422)
 
-        title = extracted.get("title", "Dépense")
-        amount = extracted.get("amount", 0.0)
-        currency = extracted.get("currency", group.currency)
-        expense_date = extracted.get("expense_date", "")
-        category_name = extracted.get("category", "")
-
-        matched_cat, confidence = predict_category_for_group(title or category_name, group=group)
-
+        category = match_group_category(result["category"], group) if result["category"] else None
+        names = {m.id: m.user.get_short_name() or m.user.username for m in memberships}
         return JsonResponse({
             "success": True,
-            "title": title,
-            "amount": amount,
-            "currency": currency,
-            "expense_date": expense_date,
-            "category_id": matched_cat.id if matched_cat else None,
-            "category_name": matched_cat.name if matched_cat else "",
-            "confidence": confidence,
+            "title": result["title"],
+            "amount": str(result["amount"]) if result["amount"] is not None else None,
+            "currency": group.currency,
+            "expense_date": result["expense_date"].isoformat() if result["expense_date"] else None,
+            "label": result["category"] or "",
+            "category_id": category.id if category else None,
+            "category_name": category.name if category else (display_name(result["category"]) if result["category"] else ""),
+            "exists": category is not None,
+            "participants": [names[i] for i in result["participants"] if i in names],
+            "unknown_participants": result["unknown_participants"],
+            "missing": result["missing"],
+            "source": result["source"],
+            "latency_ms": result["latency_ms"],
         })
 

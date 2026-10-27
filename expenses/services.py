@@ -110,6 +110,19 @@ def create_expense(
     return expense
 
 
+def predict_category(text, group=None) -> dict:
+    """
+    IA M2 : catégorie suggérée pour un titre de dépense (TF-IDF + régression logistique,
+    repli par mots-clés si le modèle est absent). Ne lève jamais d'exception.
+
+    :return: {label, confidence, confident, source, category_id, category_name, exists}
+             `category_id` est None si le groupe n'a pas (encore) cette catégorie.
+    """
+    from .ml import suggest_category
+
+    return suggest_category(text, group)
+
+
 def _resolve_category(group, category):
     if category is None or category == "":
         return None

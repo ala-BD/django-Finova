@@ -1,5 +1,7 @@
 {
-  "dataset_size": 536,
+  "dataset_size": 776,
+  "dataset_note": "Données synthétiques rédigées à la main (pas de vraies dépenses d'utilisateurs).",
+  "base_phrases": 529,
   "classes": [
     "alimentation",
     "autre",
@@ -10,25 +12,38 @@
     "shopping",
     "transport"
   ],
-  "f1_score_macro": 0.8965,
+  "split": "80/20 StratifiedGroupKFold groupé par phrase de base (random_state=42)",
+  "f1_score_macro": 0.7437,
   "target_f1_macro": 0.8,
-  "f1_target_met": true,
-  "avg_latency_ms": 0.45,
+  "f1_target_met": false,
+  "f1_random_split_leaky": 0.8603,
+  "train_duration_s": 0.627,
+  "avg_latency_ms": 2.44,
   "confusion_matrix": [
     [
-      10,
+      19,
       0,
-      0,
-      2,
       0,
       0,
       1,
+      0,
+      0,
+      0
+    ],
+    [
+      3,
+      13,
+      1,
+      0,
+      1,
+      0,
+      0,
       1
     ],
     [
       0,
-      12,
-      0,
+      1,
+      14,
       0,
       0,
       0,
@@ -37,22 +52,22 @@
     ],
     [
       0,
+      2,
+      2,
+      11,
+      0,
+      0,
+      4,
+      1
+    ],
+    [
       1,
+      1,
+      4,
+      0,
       10,
       0,
-      0,
-      1,
-      1,
-      0
-    ],
-    [
-      0,
-      0,
-      0,
-      13,
-      0,
-      0,
-      0,
+      4,
       0
     ],
     [
@@ -60,103 +75,192 @@
       0,
       0,
       0,
-      11,
+      1,
+      18,
+      1,
+      0
+    ],
+    [
       2,
+      1,
       0,
-      0
-    ],
-    [
-      0,
-      0,
-      0,
-      0,
+      1,
+      1,
       0,
       14,
-      0,
       0
     ],
     [
       0,
       0,
+      2,
+      0,
+      1,
       0,
       0,
-      0,
-      0,
-      13,
-      0
-    ],
-    [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      14
+      17
     ]
   ],
   "classification_report": {
     "alimentation": {
-      "precision": 1.0,
-      "recall": 0.7142857142857143,
-      "f1-score": 0.8333333333333334,
-      "support": 14.0
+      "precision": 0.76,
+      "recall": 0.95,
+      "f1-score": 0.8444444444444444,
+      "support": 20.0
     },
     "autre": {
-      "precision": 0.9230769230769231,
-      "recall": 0.8571428571428571,
-      "f1-score": 0.8888888888888888,
-      "support": 14.0
+      "precision": 0.7222222222222222,
+      "recall": 0.6842105263157895,
+      "f1-score": 0.7027027027027027,
+      "support": 19.0
     },
     "factures": {
-      "precision": 1.0,
-      "recall": 0.7692307692307693,
-      "f1-score": 0.8695652173913043,
-      "support": 13.0
+      "precision": 0.6086956521739131,
+      "recall": 0.8235294117647058,
+      "f1-score": 0.7,
+      "support": 17.0
     },
     "logement": {
-      "precision": 0.8666666666666667,
-      "recall": 1.0,
-      "f1-score": 0.9285714285714286,
-      "support": 13.0
+      "precision": 0.9166666666666666,
+      "recall": 0.55,
+      "f1-score": 0.6875,
+      "support": 20.0
     },
     "loisirs": {
-      "precision": 1.0,
-      "recall": 0.8461538461538461,
-      "f1-score": 0.9166666666666666,
-      "support": 13.0
+      "precision": 0.6666666666666666,
+      "recall": 0.5,
+      "f1-score": 0.5714285714285714,
+      "support": 20.0
     },
     "sante": {
-      "precision": 0.8235294117647058,
-      "recall": 1.0,
-      "f1-score": 0.9032258064516129,
-      "support": 14.0
+      "precision": 1.0,
+      "recall": 0.9,
+      "f1-score": 0.9473684210526315,
+      "support": 20.0
     },
     "shopping": {
-      "precision": 0.8666666666666667,
-      "recall": 1.0,
-      "f1-score": 0.9285714285714286,
-      "support": 13.0
+      "precision": 0.6086956521739131,
+      "recall": 0.7368421052631579,
+      "f1-score": 0.6666666666666666,
+      "support": 19.0
     },
     "transport": {
-      "precision": 0.8235294117647058,
-      "recall": 1.0,
-      "f1-score": 0.9032258064516129,
-      "support": 14.0
+      "precision": 0.8095238095238095,
+      "recall": 0.85,
+      "f1-score": 0.8292682926829268,
+      "support": 20.0
     },
-    "accuracy": 0.8981481481481481,
+    "accuracy": 0.7483870967741936,
     "macro avg": {
-      "precision": 0.9129336349924585,
-      "recall": 0.8983516483516483,
-      "f1-score": 0.8965060720407845,
-      "support": 108.0
+      "precision": 0.7615588336783989,
+      "recall": 0.7493227554179567,
+      "f1-score": 0.743672387372243,
+      "support": 155.0
     },
     "weighted avg": {
-      "precision": 0.9121780906094631,
-      "recall": 0.8981481481481481,
-      "f1-score": 0.8959750493274725,
-      "support": 108.0
+      "precision": 0.7657574745653286,
+      "recall": 0.7483870967741936,
+      "f1-score": 0.7452787910334806,
+      "support": 155.0
     }
+  },
+  "real_titles": {
+    "size": 40,
+    "f1_macro": 0.9473,
+    "accuracy": 0.95,
+    "confusion_matrix": [
+      [
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5
+      ]
+    ],
+    "errors": [
+      {
+        "title": "abonnement spotify famille",
+        "attendu": "loisirs",
+        "predit": "factures"
+      },
+      {
+        "title": "bouteille de gaz",
+        "attendu": "logement",
+        "predit": "shopping"
+      }
+    ]
   }
 }
