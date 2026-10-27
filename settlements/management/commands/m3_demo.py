@@ -6,6 +6,7 @@
 Comptes : demo_imem, demo_ala, demo_yahya, demo_linda, demo_zahra, demo_wassim — mot de passe affiché à la fin.
 """
 
+import os
 from datetime import timedelta
 from decimal import Decimal
 
@@ -31,8 +32,9 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, reset=False, **options):
-        if not settings.DEBUG:
-            raise CommandError("Commande réservée au développement (DEBUG=True).")
+        # En production, uniquement sur accord explicite (déploiement de démonstration sur Render)
+        if not settings.DEBUG and os.environ.get("LOAD_DEMO_DATA", "").lower() != "true":
+            raise CommandError("Commande réservée au développement (DEBUG=True) ou à LOAD_DEMO_DATA=true.")
         existing = Group.objects.filter(name=GROUP_NAME)
         if existing.exists():
             if not reset:

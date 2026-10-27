@@ -1,4 +1,6 @@
+import os
 from io import StringIO
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import CommandError, call_command
@@ -25,5 +27,11 @@ class DemoCommandTests(TestCase):
 
     @override_settings(DEBUG=False)
     def test_refused_outside_development(self):
-        with self.assertRaises(CommandError):
+        with patch.dict(os.environ, {"LOAD_DEMO_DATA": ""}), self.assertRaises(CommandError):
             call_command("m3_demo")
+
+    @override_settings(DEBUG=False)
+    def test_allowed_in_production_on_explicit_opt_in(self):
+        with patch.dict(os.environ, {"LOAD_DEMO_DATA": "true"}):
+            call_command("m3_demo", stdout=StringIO())
+        self.assertTrue(Group.objects.filter(name="Coloc démo M3").exists())
