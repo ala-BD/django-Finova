@@ -1,6 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Dépenses récurrentes{% endblock %}
+{% block title %}Dépenses récurrentes · {{ group.name }} — Finova{% endblock %}
 {% block content %}
+<nav class="breadcrumb" aria-label="Fil d'Ariane">
+  <a href="{% url 'groups:list' %}">Groupes</a> &rsaquo;
+  <a href="{% url 'groups:detail' group.pk %}">{{ group.name }}</a> &rsaquo;
+  <span aria-current="page">Dépenses récurrentes</span>
+</nav>
 <h1>Dépenses récurrentes</h1>
 <p><a href="{% url 'automation:recurring_create' gid=group.pk %}">Ajouter une dépense récurrente</a></p>
 {% if recurring %}

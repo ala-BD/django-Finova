@@ -16,6 +16,7 @@
         <a class="btn btn-inline" href="{% url 'expenses:list' gid=group.pk %}">Dépenses</a>
         <a class="btn btn-inline" href="{% url 'settlements:balances' group.pk %}">Soldes</a>
         <a class="btn btn-inline" href="{% url 'settlements:list' group.pk %}">Remboursements</a>
+        <a class="btn btn-inline" href="{% url 'automation:recurring_list' gid=group.pk %}">Dépenses récurrentes</a>
         <a class="btn btn-inline" href="{% url 'groups:leave' group.pk %}">Quitter</a>
     </p>
 </div>
